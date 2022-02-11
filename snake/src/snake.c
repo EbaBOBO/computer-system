@@ -41,6 +41,7 @@ void end_game(game_t* game) {
     // Game over!
 
     // Free any memory we've taken
+    free(game->board->cells);
     teardown(game);
 
     // ****************** UNCOMMENT THIS CODE IN PART 2B ***********************
@@ -113,15 +114,27 @@ int main(int argc, char** argv) {
 
     // TODO: Remove this message, uncomment the code below
     //       and implement Part 1A here.
-    printf(
-        "             ____   \n"
-        "Hello       / . .\\ \n"
-        "CS 300      \\  ---<\n"
-        "student!     \\  /  \n"
-        "   __________/ /    \n"
-        "-=:___________/\n");
+    // printf(
+    //     "             ____   \n"
+    //     "Hello       / . .\\ \n"
+    //     "CS 300      \\  ---<\n"
+    //     "student!     \\  /  \n"
+    //     "   __________/ /    \n"
+    //     "-=:___________/\n");
 
-    // initialize_window(&game);
+    initialize_window(&game);
     // TODO: implement the game loop here!
-    // end_game(&game);
+    while(true)
+    {
+    usleep(100000);
+    int input = get_input();
+    update(&game, input, 0);
+    render_game(&game);
+    if (game.game_over == true){
+        break;
+    }
+    }
+
+
+    end_game(&game);
 }

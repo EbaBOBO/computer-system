@@ -27,9 +27,22 @@ typedef enum input_key {
  * Fields:
  * - None yet!
  */
+ typedef enum snake_directions{
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT
+    // INPUT_UP,
+    // INPUT_DOWN,
+    // INPUT_LEFT,
+    // INPUT_RIGHT
+ }snake_directions_t;
 typedef struct snake {
     // TODO: Define your snake struct!
     // Store any necessary information about your snake here.
+    int pos;
+    snake_directions_t snake_directions;
+    // size_t length
 } snake_t;
 
 /** Struct containing board data.

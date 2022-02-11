@@ -40,6 +40,9 @@ board_init_status_t initialize_default_board(board_t* board) {
 
     // Add snake
     board->cells[20 * 2 + 2] = FLAG_SNAKE;
+    board->snake->pos = 42;
+    board->snake->snake_directions = RIGHT;
+ 
 
     return INIT_SUCCESS;
 }
@@ -51,6 +54,55 @@ board_init_status_t initialize_default_board(board_t* board) {
  */
 board_init_status_t initialize_game(game_t* game, char* board_rep) {
     // TODO: implement!
+    // game->game_over = 0;
+    // game->score = 0;
+    // initialize_default_board(game->board);
+
+    // while(1)
+    // {
+    // int food_index = generate_index(game->board->width * game->board->height);
+    // if (*(game->board->cells + food_index) == FLAG_PLAIN_CELL) 
+    // {
+    //     *(game->board->cells + food_index) = FLAG_FOOD;
+    //     break;
+    // } 
+    // }
+
+    if(board_rep == NULL){
+    game->game_over = 0;
+    game->score = 0;
+    initialize_default_board(game->board);
+
+    while(1)
+    {
+    int food_index = generate_index(game->board->width * game->board->height);
+    if (*(game->board->cells + food_index) == FLAG_PLAIN_CELL) 
+    {
+        *(game->board->cells + food_index) = FLAG_FOOD;
+        break;
+    } 
+    }
+
+    }
+    else
+    {
+        board_init_status_t statu = decompress_board_str(game->board,board_rep);
+        if(statu == INIT_SUCCESS)
+        {
+            while(1)
+            {
+            int food_index = generate_index(game->board->width * game->board->height);
+            if (*(game->board->cells + food_index) == FLAG_PLAIN_CELL) 
+            {
+                *(game->board->cells + food_index) = FLAG_FOOD;
+                break;
+            } 
+            }
+        }
+
+    }
+
+
 
     return INIT_SUCCESS;
 }
@@ -66,5 +118,214 @@ board_init_status_t initialize_game(game_t* game, char* board_rep) {
  */
 board_init_status_t decompress_board_str(board_t* board, char* compressed) {
     // TODO: implement!
+    int i = 0;
+    int snake_number = 0;
+    int max_col = 0;
+//test first line
+    if(*(compressed+i) != 'B')
+        return INIT_ERR_BAD_CHAR;
+    else
+        i ++;
+
+    int row = compressed[i];
+    i ++;
+    if(*(compressed+i) != 'x')
+        return INIT_ERR_BAD_CHAR;
+    else
+        i ++;
+
+    int col = *(compressed+i);
+    i++;
+    // int len_compressed = strlen(compressed);
+    char* str = (char *)calloc(200, sizeof(char));
+    i++;
+    int curr_row = 0;
+//test and construct other lines
+    strcpy(str, (compressed+i));
+    char* seperate = "|";
+    char* lines = NULL;
+    while ((lines = strsep(&str,seperate) )!= NULL)
+    {
+        int lines_len = strlen(lines);
+    // for(int j=0; j<lines_len;j++)
+        int curr_col = 0;
+        // char substr[100];
+        int substr_value = 0;
+        for(int j=0;j<lines_len;j++)
+        {
+            char* substr = (char *)calloc(200, sizeof(char));
+            if(*(str+j)<'0' ||*(str+j)>'9')
+            {   
+                int substr_i = 0;
+                if(*(str+j) == 'W')
+                {   
+                    //get number
+                    j++;
+                    while(*(str+j)>='0' ||*(str+j)<='9' )
+                    {
+                        substr[substr_i] = str[j];
+                        substr_i++;
+                        j++;
+                    }
+                    substr_value = atoi(substr);
+                    //padding 
+                    for(int k=0;k<substr_value;k++)
+                    {
+                        board->cells[curr_row*max_col + curr_col + k] = FLAG_WALL;
+                    }
+                    
+                }
+
+                else if(*(str+j) == 'S')
+                {   
+                    snake_number++;
+                    //get number
+                    j++;
+                    while(*(str+j)>='0' ||*(str+j)<='9' )
+                    {
+                        substr[substr_i] = str[j];
+                        substr_i++;
+                        j++;
+                    }
+                    substr_value = atoi(substr);
+                    //padding 
+                    for(int k=0;k<substr_value;k++)
+                    {
+                        board->cells[curr_row*max_col + curr_col + k] = FLAG_WALL;
+                    }
+                    
+                }
+                else if(*(str+j) == 'E')
+                {
+                    //get number
+                    j++;
+                    while(*(str+j)>='0' ||*(str+j)<='9' )
+                    {
+                        substr[substr_i] = str[j];
+                        substr_i++;
+                        j++;
+                    }
+                    substr_value = atoi(substr);
+                    //padding 
+                    for(int k=0;k<substr_value;k++)
+                    {
+                        board->cells[curr_row*max_col + curr_col + k] = FLAG_PLAIN_CELL;
+                    }
+                    
+                }
+                else
+                    return INIT_ERR_BAD_CHAR;
+
+                //
+                curr_col = curr_col + substr_value;
+            }//another character
+            free(substr);
+        }//another line
+        if(curr_col >= max_col)
+        {
+            max_col = curr_col;
+        }
+        if(curr_col != col)
+        return INIT_ERR_INCORRECT_DIMENSIONS;
+        curr_col = 0;
+        curr_row++;
+        
+        
+    }//end all
+    free(str);
+
+
+    if(snake_number != 1)
+        return INIT_ERR_WRONG_SNAKE_NUM;
+    if(curr_row != row)
+        return INIT_ERR_INCORRECT_DIMENSIONS;
+
     return INIT_UNIMPLEMENTED;
 }
+
+    // for(; i<len_compressed; i++)
+    // {
+    //     if(*(compressed+i) =='|')  
+    //     {
+
+    //         int curr_col = 0;
+    //         int len = strlen(str); //redefinition of  len
+    //         // char substr[100];
+    //         int substr_value = 0;
+    //         for(int j=0;j<len;j++)
+    //         {
+    //             char substr[100];
+    //             printf("%d",j);
+    //             if(*(str+j)<'0' ||*(str+j)>'9')
+    //             {   
+    //                 if(*(str+j) == 'W')
+    //                 {   
+    //                     //get number
+    //                     j++;
+    //                     while(*(str+j)>='0' ||*(str+j)<='9' )
+    //                     {
+    //                         substr[0] = str[j];
+    //                         j++;
+    //                     }
+    //                     substr_value = atoi(substr);
+    //                     //padding 
+    //                     for(int k=0;k<substr_value;k++)
+    //                     {
+    //                         board->cells[curr_row*max_col + curr_col + k] = FLAG_WALL;
+    //                     }
+                      
+    //                 }
+
+    //                 else if(*(str+j) == 'S')
+    //                 {   
+    //                     snake_number++;
+    //                     //get number
+    //                     j++;
+    //                     while(*(str+j)>='0' ||*(str+j)<='9' )
+    //                     {
+    //                         substr[0] = str[j];
+    //                         j++;
+    //                     }
+    //                     substr_value = atoi(substr);
+    //                     //padding 
+    //                     for(int k=0;k<substr_value;k++)
+    //                     {
+    //                         board->cells[curr_row*max_col + curr_col + k] = FLAG_WALL;
+    //                     }
+                       
+    //                 }
+    //                 else if(*(str+j) == 'E')
+    //                 {
+    //                     //get number
+    //                     j++;
+    //                     while(*(str+j)>='0' ||*(str+j)<='9' )
+    //                     {
+    //                         substr[0] = str[j];
+    //                         j++;
+    //                     }
+    //                     substr_value = atoi(substr);
+    //                     //padding 
+    //                     for(int k=0;k<substr_value;k++)
+    //                     {
+    //                         board->cells[curr_row*max_col + curr_col + k] = FLAG_PLAIN_CELL;
+    //                     }
+                        
+    //                 }
+    //                 else
+    //                     return INIT_ERR_BAD_CHAR;
+
+    //                 //
+    //                 curr_col = curr_col + substr_value;
+    //                 // *substr = NULL;
+    //             }//another character
+    //         }
+    //         if(curr_col >= max_col)
+    //         {
+    //             max_col = curr_col;
+    //         }
+    //         if(curr_col != col)
+    //         return INIT_ERR_INCORRECT_DIMENSIONS;
+    //         curr_col = 0;
+    //         curr_row++;
+    //     }//another line
+    // }//end all

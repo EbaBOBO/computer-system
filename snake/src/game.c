@@ -24,6 +24,63 @@ void update(game_t* game, input_key_t input, int growing) {
     // off the board.
 
     // TODO: implement!
+    // int have_food = 0;
+    // for(int i = 0; i<200;i++)
+    // {
+    //     if(game->board->cells[i] == FLAG_FOOD)
+    //     {
+    //         have_food = 1;
+    //     }
+    // }
+    // if(have_food == 0)
+    // {
+    //     place_food(game->board);
+    // }
+
+    if(input != INPUT_NONE)
+    {
+        game->board->snake->snake_directions = input;
+    }
+    
+    if(game->board->snake->snake_directions == UP)
+    {
+        game->board->snake->pos  = game->board->snake->pos - 20;
+        game->board->cells[game->board->snake->pos+20] = FLAG_PLAIN_CELL;
+    }
+    else if(game->board->snake->snake_directions == DOWN)
+    {
+        game->board->snake->pos  = game->board->snake->pos + 20;
+        game->board->cells[game->board->snake->pos-20] = FLAG_PLAIN_CELL;
+    }
+    else if(game->board->snake->snake_directions == LEFT)
+    {
+        game->board->snake->pos  --;
+        game->board->cells[game->board->snake->pos+1] = FLAG_PLAIN_CELL;
+    }
+    else if(game->board->snake->snake_directions == RIGHT)
+    {
+        game->board->snake->pos  ++;
+        game->board->cells[game->board->snake->pos-1] = FLAG_PLAIN_CELL;
+    }
+
+    if (game->board->cells[game->board->snake->pos] == FLAG_WALL)
+    {     
+        game->game_over = 1;
+    }
+    else
+    {
+        if(game->board->cells[game->board->snake->pos] == FLAG_FOOD)
+        {
+            game->score ++;
+            place_food(game->board);
+        }
+        game->board->cells[game->board->snake->pos] = FLAG_SNAKE;
+
+    }
+
+    
+    
+    
 }
 
 /** Sets a random space on the given board to food.
