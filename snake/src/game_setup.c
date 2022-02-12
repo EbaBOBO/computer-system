@@ -1,9 +1,10 @@
 #include "game_setup.h"
+#include "game.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <ctype.h>
 // Some handy dandy macros for decompression
 #define E_CAP_HEX 0x45
 #define E_LOW_HEX 0x65
@@ -40,8 +41,8 @@ board_init_status_t initialize_default_board(board_t* board) {
 
     // Add snake
     board->cells[20 * 2 + 2] = FLAG_SNAKE;
-    board->snake->pos = 42;
-    board->snake->snake_directions = RIGHT;
+    // board->snake->pos = 42;
+    // board->snake->snake_directions = RIGHT;
  
 
     return INIT_SUCCESS;
@@ -67,45 +68,33 @@ board_init_status_t initialize_game(game_t* game, char* board_rep) {
     //     break;
     // } 
     // }
-
-    if(board_rep == NULL){
     game->game_over = 0;
     game->score = 0;
-    initialize_default_board(game->board);
-
-    while(1)
-    {
-    int food_index = generate_index(game->board->width * game->board->height);
-    if (*(game->board->cells + food_index) == FLAG_PLAIN_CELL) 
-    {
-        *(game->board->cells + food_index) = FLAG_FOOD;
-        break;
-    } 
-    }
-
+    game->board->snake->snake_directions = RIGHT;
+    game->board->snake->pos = 42;
+    if(board_rep == NULL){
+         board_init_status_t status = initialize_default_board(game->board);
+          place_food(game->board);
+           return status;
     }
     else
     {
-        board_init_status_t statu = decompress_board_str(game->board,board_rep);
-        if(statu == INIT_SUCCESS)
+        board_init_status_t status = decompress_board_str(game->board,board_rep);
+        if(status == INIT_SUCCESS)
         {
-            while(1)
-            {
-            int food_index = generate_index(game->board->width * game->board->height);
-            if (*(game->board->cells + food_index) == FLAG_PLAIN_CELL) 
-            {
-                *(game->board->cells + food_index) = FLAG_FOOD;
-                break;
-            } 
-            }
+            place_food(game->board);
+            return status;
         }
+        else
+        {
+            return status;
+        }
+    }
 
     }
 
+    // return INIT_SUCCESS;
 
-
-    return INIT_SUCCESS;
-}
 
 /** Takes in a string `compressed` and returns a board_t* that contains the
  * matching set of cells that can then be initialized. Arguments:
@@ -116,111 +105,164 @@ board_init_status_t initialize_game(game_t* game, char* board_rep) {
  * by the `|` character), and read out a letter (E, S or W) a number of times
  * dictated by the number that follows the letter.
  */
+// board_init_status_t decompress_board_str(board_t* board, char* compressed) {
 board_init_status_t decompress_board_str(board_t* board, char* compressed) {
     // TODO: implement!
+    // printf("%s\n","ok1");
+    // printf("%s\n",compressed);
+    int col = 0;
+    int row = 0;
+    board->width = col;
+    board->height = row;
+    board->cells = calloc(row * col, sizeof(int));
     int i = 0;
     int snake_number = 0;
     int max_col = 0;
 //test first line
     if(*(compressed+i) != 'B')
         return INIT_ERR_BAD_CHAR;
-    else
-        i ++;
-
-    int row = compressed[i];
-    i ++;
-    if(*(compressed+i) != 'x')
-        return INIT_ERR_BAD_CHAR;
-    else
-        i ++;
-
-    int col = *(compressed+i);
     i++;
-    // int len_compressed = strlen(compressed);
-    char* str = (char *)calloc(200, sizeof(char));
-    i++;
-    int curr_row = 0;
-//test and construct other lines
-    strcpy(str, (compressed+i));
-    char* seperate = "|";
-    char* lines = NULL;
-    while ((lines = strsep(&str,seperate) )!= NULL)
+    row = atoi((compressed+i));    
+    while(((int)(compressed[i]) - (int)('0'))>= 0 && ((int)(compressed[i]) - (int)('0'))<= 9)
     {
+        i++;
+    }
+    if(compressed[i] != 'x') 
+        return INIT_ERR_BAD_CHAR;
+    i++;
+    col = atoi(compressed+i);
+    free(board->cells);
+    while(((int)(compressed[i]) - (int)('0'))>= 0 && ((int)(compressed[i]) - (int)('0'))<= 9)
+    {
+        i++;
+    }
+    i++;
+
+//test and construct other lines
+    
+    board->width = col;
+    board->height = row;
+    board->cells = calloc(row * col, sizeof(int));
+    int curr_row = 0;
+    compressed = compressed+i;
+    char* lines = strsep(&compressed,"|");
+    // printf("%s\n", "compressed[j] is:");
+    // printf("%s\n", compressed);
+    // printf("%c\n", compressed[2]);
+    while (lines!= NULL)
+    {
+
+        // printf("%s", "line is:");
+        // printf("%s\n", lines);
         int lines_len = strlen(lines);
-    // for(int j=0; j<lines_len;j++)
         int curr_col = 0;
-        // char substr[100];
-        int substr_value = 0;
-        for(int j=0;j<lines_len;j++)
+        int j=0;
+        while(j<lines_len)
         {
-            char* substr = (char *)calloc(200, sizeof(char));
-            if(*(str+j)<'0' ||*(str+j)>'9')
+        if(curr_row >= row ) {
+            return INIT_ERR_INCORRECT_DIMENSIONS;
+        }
+            // char* substr = (char *)calloc(col*row, sizeof(char));
+            // printf("%s", "lines[j] is:");
+            // printf("%c\n", lines[j]);
+            // printf("%s\n", "j is:");
+            // printf("%d\n", j);
+            if(isalpha(lines[j]) != 0)
             {   
-                int substr_i = 0;
-                if(*(str+j) == 'W')
+                int number = 0;
+                // printf("%c\n", str[j]);
+                if(*(lines+j) == 'W')
                 {   
+                // printf("%s", "wwwwww:");
+                // printf("%c\n", lines[j]);
                     //get number
                     j++;
-                    while(*(str+j)>='0' ||*(str+j)<='9' )
+                    
+                    while(isdigit(lines[j]))
                     {
-                        substr[substr_i] = str[j];
-                        substr_i++;
+                        int digit = (int)(lines[j]) - (int)('0');
+                        number = number*10 + digit;
+                        // printf("%s\n", "isdigit_j is:");
+                        // printf("%d\n", j);
                         j++;
                     }
-                    substr_value = atoi(substr);
                     //padding 
-                    for(int k=0;k<substr_value;k++)
+                    for(int k=1;k<=number;k++)
                     {
-                        board->cells[curr_row*max_col + curr_col + k] = FLAG_WALL;
+                        // printf("%s", "col is:");
+                        // printf("%d %d %d\n", curr_row, curr_col, k);
+                        board->cells[curr_row*max_col + curr_col + k -1] = FLAG_WALL;
                     }
+                    // printf("%s\n", "j is:");
+                    // printf("%d\n", j);
                     
                 }
 
-                else if(*(str+j) == 'S')
+                else if(*(lines+j) == 'S')
                 {   
-                    snake_number++;
+                // printf("%s", "ssssss:");
+                // printf("%c\n", lines[j]);
+        // printf("%s", "ssssssssssssssss:");
+        // printf("%d\n", snake_number);
+                    
                     //get number
                     j++;
-                    while(*(str+j)>='0' ||*(str+j)<='9' )
+                    while(isdigit(lines[j]))
                     {
-                        substr[substr_i] = str[j];
-                        substr_i++;
+                        int digit = (int)(lines[j]) - (int)('0');
+                        number = number*10 + digit;
                         j++;
                     }
-                    substr_value = atoi(substr);
+                    snake_number += number;
                     //padding 
-                    for(int k=0;k<substr_value;k++)
+                    for(int k=1;k<=number;k++)
                     {
-                        board->cells[curr_row*max_col + curr_col + k] = FLAG_WALL;
+                        // printf("%s", "col is:");
+                        // printf("%d %d %d\n", curr_row, curr_col, k);
+                        board->cells[curr_row*max_col + curr_col + k -1] = FLAG_SNAKE;
                     }
                     
                 }
-                else if(*(str+j) == 'E')
+                
+                else if(*(lines+j) == 'E')
                 {
                     //get number
+                // printf("%s", "eeeeeeee:");
+                // printf("%c\n", lines[j]);
                     j++;
-                    while(*(str+j)>='0' ||*(str+j)<='9' )
+                    while(isdigit(lines[j]))
                     {
-                        substr[substr_i] = str[j];
-                        substr_i++;
+                        int digit = (int)(lines[j]) - (int)('0');
+                        number = number*10 + digit;
                         j++;
                     }
-                    substr_value = atoi(substr);
                     //padding 
-                    for(int k=0;k<substr_value;k++)
+                    for(int k=1;k<=number;k++)
                     {
-                        board->cells[curr_row*max_col + curr_col + k] = FLAG_PLAIN_CELL;
+                        // printf("%s", "col is:");
+                        // printf("%d %d %d\n", curr_row, curr_col, k);
+                        board->cells[curr_row*max_col + curr_col + k -1] = FLAG_PLAIN_CELL;
                     }
                     
                 }
                 else
                     return INIT_ERR_BAD_CHAR;
+                    
+
+                // printf("%s", "end_j is:");
+                // printf("%d\n", j);
 
                 //
-                curr_col = curr_col + substr_value;
+                curr_col = curr_col + number;
+                // free(substr);
             }//another character
-            free(substr);
+            else
+            j++;
+            
         }//another line
+        lines = strsep(&compressed,"|");
+        // printf("%s", "next line is:");
+        // printf("%s\n", lines);
         if(curr_col >= max_col)
         {
             max_col = curr_col;
@@ -232,100 +274,14 @@ board_init_status_t decompress_board_str(board_t* board, char* compressed) {
         
         
     }//end all
-    free(str);
+    // free(str);
 
-
+        // printf("%s", "rrrrrrrrrrrrrrrrrrrrr:");
+        // printf("%d\n", snake_number);
     if(snake_number != 1)
         return INIT_ERR_WRONG_SNAKE_NUM;
-    if(curr_row != row)
+    if((curr_row) != row)
         return INIT_ERR_INCORRECT_DIMENSIONS;
 
-    return INIT_UNIMPLEMENTED;
+    return INIT_SUCCESS;
 }
-
-    // for(; i<len_compressed; i++)
-    // {
-    //     if(*(compressed+i) =='|')  
-    //     {
-
-    //         int curr_col = 0;
-    //         int len = strlen(str); //redefinition of  len
-    //         // char substr[100];
-    //         int substr_value = 0;
-    //         for(int j=0;j<len;j++)
-    //         {
-    //             char substr[100];
-    //             printf("%d",j);
-    //             if(*(str+j)<'0' ||*(str+j)>'9')
-    //             {   
-    //                 if(*(str+j) == 'W')
-    //                 {   
-    //                     //get number
-    //                     j++;
-    //                     while(*(str+j)>='0' ||*(str+j)<='9' )
-    //                     {
-    //                         substr[0] = str[j];
-    //                         j++;
-    //                     }
-    //                     substr_value = atoi(substr);
-    //                     //padding 
-    //                     for(int k=0;k<substr_value;k++)
-    //                     {
-    //                         board->cells[curr_row*max_col + curr_col + k] = FLAG_WALL;
-    //                     }
-                      
-    //                 }
-
-    //                 else if(*(str+j) == 'S')
-    //                 {   
-    //                     snake_number++;
-    //                     //get number
-    //                     j++;
-    //                     while(*(str+j)>='0' ||*(str+j)<='9' )
-    //                     {
-    //                         substr[0] = str[j];
-    //                         j++;
-    //                     }
-    //                     substr_value = atoi(substr);
-    //                     //padding 
-    //                     for(int k=0;k<substr_value;k++)
-    //                     {
-    //                         board->cells[curr_row*max_col + curr_col + k] = FLAG_WALL;
-    //                     }
-                       
-    //                 }
-    //                 else if(*(str+j) == 'E')
-    //                 {
-    //                     //get number
-    //                     j++;
-    //                     while(*(str+j)>='0' ||*(str+j)<='9' )
-    //                     {
-    //                         substr[0] = str[j];
-    //                         j++;
-    //                     }
-    //                     substr_value = atoi(substr);
-    //                     //padding 
-    //                     for(int k=0;k<substr_value;k++)
-    //                     {
-    //                         board->cells[curr_row*max_col + curr_col + k] = FLAG_PLAIN_CELL;
-    //                     }
-                        
-    //                 }
-    //                 else
-    //                     return INIT_ERR_BAD_CHAR;
-
-    //                 //
-    //                 curr_col = curr_col + substr_value;
-    //                 // *substr = NULL;
-    //             }//another character
-    //         }
-    //         if(curr_col >= max_col)
-    //         {
-    //             max_col = curr_col;
-    //         }
-    //         if(curr_col != col)
-    //         return INIT_ERR_INCORRECT_DIMENSIONS;
-    //         curr_col = 0;
-    //         curr_row++;
-    //     }//another line
-    // }//end all

@@ -32,10 +32,6 @@ typedef enum input_key {
     DOWN,
     LEFT,
     RIGHT
-    // INPUT_UP,
-    // INPUT_DOWN,
-    // INPUT_LEFT,
-    // INPUT_RIGHT
  }snake_directions_t;
 typedef struct snake {
     // TODO: Define your snake struct!
