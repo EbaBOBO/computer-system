@@ -23,6 +23,7 @@
  *  - height: a positive int equal to the desired outer height
  */
 board_init_status_t initialize_default_board(board_t* board) {
+    printf("%s\n", "initialize_default_board");
     board->width = 20;
     board->height = 10;
     board->cells = calloc(20 * 10, sizeof(int));
@@ -40,9 +41,13 @@ board_init_status_t initialize_default_board(board_t* board) {
     }
 
     // Add snake
+    // printf("%s\n", "add snake");
     board->cells[20 * 2 + 2] = FLAG_SNAKE;
-    // board->snake->pos = 42;
-    // board->snake->snake_directions = RIGHT;
+    
+    board->snake->pos = 42;
+    // printf("%s\n", "add directions");
+    board->snake->snake_directions = RIGHT;
+    // printf("%d\n", board->cells[42]);
  
 
     return INIT_SUCCESS;
@@ -68,14 +73,16 @@ board_init_status_t initialize_game(game_t* game, char* board_rep) {
     //     break;
     // } 
     // }
+    printf("%s\n", "initialize_game");
     game->game_over = 0;
     game->score = 0;
     game->board->snake->snake_directions = RIGHT;
     game->board->snake->pos = 42;
     if(board_rep == NULL){
-         board_init_status_t status = initialize_default_board(game->board);
-          place_food(game->board);
-           return status;
+        board_init_status_t status = initialize_default_board(game->board);
+        place_food(game->board);
+        // printf("%d\n", status);
+        return status;
     }
     else
     {

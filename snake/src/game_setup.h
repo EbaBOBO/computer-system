@@ -9,12 +9,12 @@
  */
 typedef enum board_init_status {
     INIT_SUCCESS,                   // no errors were thrown
-    INIT_ERR_INCORRECT_DIMENSIONS,  // dimensions description was not formatted 0
+    INIT_ERR_INCORRECT_DIMENSIONS,  // dimensions description was not formatted
                                     // correctly, or too many rows/columns are
                                     // specified anywhere in the string for the
                                     // given dimensions
-    INIT_ERR_WRONG_SNAKE_NUM,  // no snake or multiple snakes are on the board 1
-    INIT_ERR_BAD_CHAR,  // any other part of the compressed string was formatted 2
+    INIT_ERR_WRONG_SNAKE_NUM,  // no snake or multiple snakes are on the boqard
+    INIT_ERR_BAD_CHAR,  // any other part of the compressed string was formatted
                         // incorrectly
     INIT_UNIMPLEMENTED  // only used in stencil, no need to handle this
 } board_init_status_t;
