@@ -122,6 +122,7 @@ board_init_status_t decompress_board_str(board_t* board, char* compressed) {
     board->width = col;
     board->height = row;
     board->cells = calloc(row * col, sizeof(int));
+    // game->board->snake->pos = 42;
     int i = 0;
     int snake_number = 0;
     int max_col = 0;
@@ -199,6 +200,7 @@ board_init_status_t decompress_board_str(board_t* board, char* compressed) {
                         // printf("%s", "col is:");
                         // printf("%d %d %d\n", curr_row, curr_col, k);
                         board->cells[curr_row*max_col + curr_col + k -1] = FLAG_WALL;
+                        
                     }
                     // printf("%s\n", "j is:");
                     // printf("%d\n", j);
@@ -227,6 +229,7 @@ board_init_status_t decompress_board_str(board_t* board, char* compressed) {
                         // printf("%s", "col is:");
                         // printf("%d %d %d\n", curr_row, curr_col, k);
                         board->cells[curr_row*max_col + curr_col + k -1] = FLAG_SNAKE;
+                        board->snake->pos = curr_row*max_col + curr_col + k -1;
                     }
                     
                 }

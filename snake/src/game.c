@@ -24,42 +24,51 @@ void update(game_t* game, input_key_t input, int growing) {
     // off the board.
     // TODO: implement!
     int width = game->board->width;
-    // printf("%s\n", "update");
-
+    if (game->game_over == 1)
+        return;
     if(input != INPUT_NONE)
     {
         game->board->snake->snake_directions = input;
     }
+    // printf("%s\n", "start update");
+    // printf("%d\n", game->board->snake->pos);
 
         int prev_pos = game->board->snake->pos;
         if(game->board->snake->snake_directions == UP)
         {
+            // printf("%d\n", game->board->cells[game->board->snake->pos - width]);
             game->board->snake->pos  = game->board->snake->pos - width;
             game->board->cells[game->board->snake->pos+width] = FLAG_PLAIN_CELL;
         }
         else if(game->board->snake->snake_directions == DOWN)
         {
+            // printf("%d\n", game->board->cells[game->board->snake->pos + width]);
             game->board->snake->pos  = game->board->snake->pos + width;
             game->board->cells[game->board->snake->pos-width] = FLAG_PLAIN_CELL;
         }
         else if(game->board->snake->snake_directions == LEFT)
         {
+            // printf("%d\n", game->board->cells[game->board->snake->pos--]);
             game->board->snake->pos  --;
             game->board->cells[game->board->snake->pos+1] = FLAG_PLAIN_CELL;
         }
         else if(game->board->snake->snake_directions == RIGHT)
         {
+            // printf("%d\n", game->board->cells[game->board->snake->pos++]);
             game->board->snake->pos  ++;
             game->board->cells[game->board->snake->pos-1] = FLAG_PLAIN_CELL;
         }
+    // printf("%d\n", game->board->snake->pos);
         // printf("%s", "posssssssssssssss:");
         // printf("%d %d\n", game->board->snake->pos, game->board->cells[game->board->snake->pos]);
         if (game->board->cells[game->board->snake->pos] == FLAG_WALL)
         {     
             game->board->snake->pos = prev_pos;
             game->board->cells[game->board->snake->pos] = FLAG_SNAKE;
+            // printf("%s\n", "wall    end ");
+            // printf("%d %d\n", game->board->cells[game->board->snake->pos],game->board->snake->pos);
             game->game_over = 1;
-            // return;
+            return;
         }
         else
         {
@@ -71,6 +80,8 @@ void update(game_t* game, input_key_t input, int growing) {
             }
             game->board->cells[game->board->snake->pos] = FLAG_SNAKE;
         }
+    // printf("%s\n", "end pos");
+    // printf("%d %d\n", game->board->snake->pos, game->board->cells[game->board->snake->pos]);
 
     // return;    
 }
@@ -107,5 +118,5 @@ void read_name(char* write_into) {
  */
 void teardown(game_t* game) {
     // TODO: implement!
-    // free(game->board->cells);
+    free(game->board->cells);
 }
