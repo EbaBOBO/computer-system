@@ -25,8 +25,8 @@ void update(game_t* game, input_key_t input, int growing) {
     // TODO: implement!
 
     
-    // if(game->game_over == 0)
-    // {
+    if(game->game_over == 1)
+        return;
     int width = game->board->width;
     // printf("%d\n",*((int*)game->board->snake->pos->data));
     int* snake_position = game->board->snake->pos->data;
