@@ -41,7 +41,7 @@ void end_game(game_t* game) {
     // Game over!
 
     // Free any memory we've taken
-    free(game->board->cells);
+    // free(game->board->cells);
     teardown(game);
 
     // ****************** UNCOMMENT THIS CODE IN PART 2B ***********************
@@ -68,38 +68,6 @@ int main(int argc, char** argv) {
     game.board = &board;
     board.snake = &snake;
     int snake_grows;
-    /////////////////////////////////////////////
-    // char* board_rep = "B10x10|W10|W1E8W1|W3E6W1|W1E3S1E4W1|W1E8W1|W1E8W1|W1E5W4|W1E1W1E6W1|W1E1W1E6W1|W10";
-    // switch (argc) {
-    //     case (2):
-    //         snake_grows = atoi(argv[1]);
-    //         if (snake_grows != 1 && snake_grows != 0) {
-    //             printf(
-    //                 "snake_grows must be either 1 (grows) or 0 (does not "
-    //                 "grow)\n");
-    //             return 0;
-    //         }
-    //         initialize_game(&game, board_rep);
-    //         break;
-    //     case (3):
-    //         snake_grows = atoi(argv[1]);
-    //         if (snake_grows != 1 && snake_grows != 0) {
-    //             printf(
-    //                 "snake_grows must be either 1 (grows) or 0 (does not "
-    //                 "grow)\n");
-    //             return 0;
-    //         } else if (*argv[2] == '\0') {
-    //             initialize_game(&game, board_rep);
-    //             break;
-    //         }
-    //         initialize_game(&game, argv[2]);
-    //         break;
-    //     case (1):
-    //     default:
-    //         printf("usage: snake <GROWS: 0|1> [BOARD STRING]\n");
-    //         return 0;
-    // }
-//////////////////////////////////////////////////
     switch (argc) {
         case (2):
             snake_grows = atoi(argv[1]);
@@ -159,9 +127,9 @@ int main(int argc, char** argv) {
     {
     usleep(100000);
     int input = get_input();
-    update(&game, input, 0);
+    update(&game, input, 1);
     render_game(&game);
-    if (game.game_over == true){
+    if (game.game_over == 1){
         break;
     }
     }

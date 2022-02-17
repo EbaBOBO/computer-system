@@ -2,6 +2,7 @@
 #define COMMON_H
 
 #include <stddef.h>
+#include "linked_list.h"
 
 // Let's see if we can keep this as simple as possible, lest we intimidate
 // students looking through the provided code.
@@ -36,7 +37,11 @@ typedef enum input_key {
 typedef struct snake {
     // TODO: Define your snake struct!
     // Store any necessary information about your snake here.
-    int pos;
+    // int pos;
+    node_t* pos;
+    // pos->data;
+    // pos->prev = NULL;
+    // pos->next = NULL;
     snake_directions_t snake_directions;
     // size_t length
 } snake_t;

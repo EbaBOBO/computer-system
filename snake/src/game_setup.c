@@ -43,12 +43,7 @@ board_init_status_t initialize_default_board(board_t* board) {
     // Add snake
     // printf("%s\n", "add snake");
     board->cells[20 * 2 + 2] = FLAG_SNAKE;
-    
-    board->snake->pos = 42;
-    // printf("%s\n", "add directions");
-    board->snake->snake_directions = RIGHT;
-    // printf("%d\n", board->cells[42]);
- 
+    board->snake->snake_directions = RIGHT; 
 
     return INIT_SUCCESS;
 }
@@ -60,28 +55,18 @@ board_init_status_t initialize_default_board(board_t* board) {
  */
 board_init_status_t initialize_game(game_t* game, char* board_rep) {
     // TODO: implement!
-    // game->game_over = 0;
-    // game->score = 0;
-    // initialize_default_board(game->board);
-
-    // while(1)
-    // {
-    // int food_index = generate_index(game->board->width * game->board->height);
-    // if (*(game->board->cells + food_index) == FLAG_PLAIN_CELL) 
-    // {
-    //     *(game->board->cells + food_index) = FLAG_FOOD;
-    //     break;
-    // } 
-    // }
-    printf("%s\n", "initialize_game");
     game->game_over = 0;
     game->score = 0;
     game->board->snake->snake_directions = RIGHT;
-    game->board->snake->pos = 42;
+    node_t* snake_head = NULL;
+    int position = 42;
+    insert_first(&snake_head, &position, sizeof(int));
+    game->board->snake->pos = snake_head;
+    // printf("%d\n",*((int*)snake_head->data));
+
     if(board_rep == NULL){
         board_init_status_t status = initialize_default_board(game->board);
         place_food(game->board);
-        // printf("%d\n", status);
         return status;
     }
     else
@@ -154,9 +139,6 @@ board_init_status_t decompress_board_str(board_t* board, char* compressed) {
     int curr_row = 0;
     compressed = compressed+i;
     char* lines = strsep(&compressed,"|");
-    // printf("%s\n", "compressed[j] is:");
-    // printf("%s\n", compressed);
-    // printf("%c\n", compressed[2]);
     while (lines!= NULL)
     {
 
@@ -229,7 +211,8 @@ board_init_status_t decompress_board_str(board_t* board, char* compressed) {
                         // printf("%s", "col is:");
                         // printf("%d %d %d\n", curr_row, curr_col, k);
                         board->cells[curr_row*max_col + curr_col + k -1] = FLAG_SNAKE;
-                        board->snake->pos = curr_row*max_col + curr_col + k -1;
+                        int* snake_position = board->snake->pos->data;
+                        *(snake_position) = curr_row*max_col + curr_col + k -1;
                     }
                     
                 }
@@ -264,7 +247,6 @@ board_init_status_t decompress_board_str(board_t* board, char* compressed) {
 
                 //
                 curr_col = curr_col + number;
-                // free(substr);
             }//another character
             else
             j++;
@@ -284,7 +266,6 @@ board_init_status_t decompress_board_str(board_t* board, char* compressed) {
         
         
     }//end all
-    // free(str);
 
         // printf("%s", "rrrrrrrrrrrrrrrrrrrrr:");
         // printf("%d\n", snake_number);
