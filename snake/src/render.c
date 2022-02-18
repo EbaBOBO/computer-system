@@ -76,6 +76,7 @@ void initialize_window(game_t* game) {
     use_default_colors();
     init_pair(1, COLOR_BLACK, -1);
     init_pair(2, COLOR_YELLOW, -1);
+    // init_pair(2, COLOR_GREEN, -1);
     init_pair(3, COLOR_BLUE, -1);
     init_pair(4, COLOR_RED, -1);
     init_pair(5, COLOR_WHITE, -1);
@@ -92,12 +93,18 @@ void render_game(game_t* game) {
 
     for (unsigned i = 0; i < board->width * board->height; ++i) {
         if (board->cells[i] & FLAG_SNAKE) {
-            char c = 'S';
+            char c = 's';
             ADD(i / board->width, i % board->width,
                 c | COLOR_PAIR(COLOR_SNAKE));
+            // cchar_t s;
+            // setcchar(&s, L"\u2588", WA_NORMAL, COLOR_SNAKE, NULL);
+            // ADDW(i / board->width, i % board->width, &s);
         } else if (board->cells[i] & FLAG_FOOD) {
             char c = 'O';
             ADD(i / board->width, i % board->width, c | COLOR_PAIR(COLOR_FOOD));
+            // cchar_t f;
+            // setcchar(&f, L"\U0001F353", WA_NORMAL, COLOR_FOOD, NULL);
+            // ADDW(i / board->width, i % board->width-1, &f);
         } else if (board->cells[i] & FLAG_WALL) {
             cchar_t c;
             setcchar(&c, L"\u2588", WA_NORMAL, COLOR_WALL, NULL);
@@ -107,9 +114,9 @@ void render_game(game_t* game) {
             ADD(i / board->width, i % board->width, c);
         }
     }
-
     // Write score
     WRITEW(-1, 0, "SCORE: %d", game->score);
+    // WRITEW(board->height + 1, 0, "rest life: %d", game->rest_life);
     // right-aligning is very doable, but a tad bit less approachable
 
     refresh();

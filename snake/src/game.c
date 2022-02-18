@@ -24,7 +24,8 @@ void update(game_t* game, input_key_t input, int growing) {
     // off the board.
     // TODO: implement!
 
-    
+    // if (game->game_over == 1 && game->rest_life <= 0)
+    //     return ;
     if(game->game_over == 1)
         return;
     int width = game->board->width;
@@ -134,13 +135,34 @@ void update(game_t* game, input_key_t input, int growing) {
         // printf("%d\n",game->board->cells[*(snake_position)+input_direction]);
         if (game->board->cells[new_pos] == FLAG_WALL)
         {     
+            // if (game->rest_life >0)
+            // {
+            //     game->rest_life -= 1;
+            // }
+            // else
+            // {
+            //     game->game_over = 1;
+            //     return;
+            // }
             game->game_over = 1;
             return;
+
         }
         else if (game->board->cells[new_pos] == FLAG_SNAKE && new_pos != *last)// && new_pos != *last
         {   
             // printf("%s\n", "tail game over");
             // printf("%d %d\n", new_pos, *last);
+            // if(game->rest_life > 0)
+            // {
+            //     game->rest_life -= 1;
+            //     remove_element(&(game->board->snake->pos), &new_pos, sizeof(int));
+            //     game->board->cells[new_pos] = FLAG_PLAIN_CELL;
+            // }
+            // else
+            // {
+            //     game->game_over = 1;
+            //     return;
+            // }
             game->game_over = 1;
             return;
         }
@@ -186,7 +208,14 @@ void update(game_t* game, input_key_t input, int growing) {
 void place_food(board_t* board) {
     /* DO NOT MODIFY THIS FUNCTION */
     int food_index = generate_index(board->width * board->height);
-    if (*(board->cells + food_index) == FLAG_PLAIN_CELL) {
+    // if ((*(board->cells + food_index) == FLAG_PLAIN_CELL)&&(*(board->cells + food_index -1) != FLAG_WALL)) 
+    // {
+    //     *(board->cells + food_index) = FLAG_FOOD;
+    // } else {
+    //     place_food(board);
+    // }
+    if (*(board->cells + food_index) == FLAG_PLAIN_CELL) 
+    {
         *(board->cells + food_index) = FLAG_FOOD;
     } else {
         place_food(board);

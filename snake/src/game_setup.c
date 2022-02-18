@@ -8,12 +8,15 @@
 // Some handy dandy macros for decompression
 #define E_CAP_HEX 0x45
 #define E_LOW_HEX 0x65
-#define S_CAP_HEX 0x53
-#define S_LOW_HEX 0x73
+// #define S_CAP_HEX 0x53
+// #define S_CAP_HEX 0xE2 0x96 0x88 (e29688)
+#define S_LOW_HEX 0x73  //snake S
+// #define S_LOW_HEX 0xE2 0x96 0x88 (e29688)
 #define W_CAP_HEX 0x57
 #define W_LOW_HEX 0x77
 #define DIGIT_START 0x30
 #define DIGIT_END 0x39
+// #define FLAG_SNAKE \U0001F600
 
 /* Initializes the board struct with walls around the edge of the board.
  * Returns NULL on failure; otherwise returns the pointer to the modified board.
@@ -26,7 +29,7 @@ board_init_status_t initialize_default_board(board_t* board) {
     // printf("%s\n", "initialize_default_board");
     board->width = 20;
     board->height = 10;
-    board->cells = calloc(20 * 10, sizeof(int));
+    board->cells = calloc((board->width) * (board->height), sizeof(int));
 
     // Set edge cells!
     // Top and bottom edges:
@@ -58,6 +61,7 @@ board_init_status_t initialize_game(game_t* game, char* board_rep) {
     game->game_over = 0;
     game->score = 0;
     game->board->snake->snake_directions = RIGHT;
+    game->rest_life = 3;
     node_t* snake_head = NULL;
     int position = 42;
     insert_first(&snake_head, &position, sizeof(int));

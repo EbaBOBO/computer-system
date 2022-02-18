@@ -10,6 +10,7 @@
 // Bitflags enable us to store cell data in integers!
 #define FLAG_PLAIN_CELL 0x0
 #define FLAG_SNAKE 0x1
+// #define FLAG_SNAKE \U0001F600
 #define FLAG_WALL 0x2
 #define FLAG_FOOD 0x4
 
@@ -58,6 +59,7 @@ typedef struct board {
     size_t width;
     size_t height;
     int* cells;  // array of integers containing data re each cell via bitmap
+    // size_t cells;
     snake_t* snake;
 } board_t;
 
@@ -76,6 +78,7 @@ typedef struct game {
     board_t* board;  // pointer to the board struct for this game
     char* name;
     int name_len;
+    int rest_life;
 } game_t;
 
 void set_seed(unsigned seed);
