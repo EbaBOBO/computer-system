@@ -201,8 +201,8 @@ void place_food(board_t* board) {
 void read_name(char* write_into) {
     // TODO: implement! (remove the call to strcpy once you begin your
     // implementation)
-    
-    scanf("%s", write_into);
+    // scanf("%[^\n]",str);
+    scanf("%[^\n]", write_into);//"%[^\n]"
     // fflush(stdin);
     // int len = strlen(write_into);
     // size_t top;
@@ -210,7 +210,7 @@ void read_name(char* write_into) {
     top = read(0, write_into, 1000);
     fflush(stdin);
     int len = strlen(write_into);
-    printf("%s\n", write_into);
+    // printf("%s\n", write_into);
     mbslen(write_into);
     // printf("%d %d\n", len, top);
     while(len<1)

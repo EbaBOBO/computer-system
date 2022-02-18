@@ -43,6 +43,11 @@ size_t mbslen(const char* bytes) {
     // char* str = bytes;
     for(int i = 0; i<len; i++)
     {
+        // if(*(str+i) == ' ')
+        // {
+        //     // printf("%s\n", "space");
+        //     count -= 1;
+        // }
         // printf("%c\n", *(str+i));
         if((*(str+i)&0xc0) != 0x80)
         {
