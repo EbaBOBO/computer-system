@@ -201,7 +201,33 @@ void place_food(board_t* board) {
 void read_name(char* write_into) {
     // TODO: implement! (remove the call to strcpy once you begin your
     // implementation)
-    strcpy(write_into, "placeholder");
+    
+    scanf("%s", write_into);
+    // fflush(stdin);
+    // int len = strlen(write_into);
+    // size_t top;
+    int top;
+    top = read(0, write_into, 1000);
+    fflush(stdin);
+    int len = strlen(write_into);
+    printf("%s\n", write_into);
+    mbslen(write_into);
+    // printf("%d %d\n", len, top);
+    while(len<1)
+    {
+        // scanf("%s", write_into);
+
+        top = read(0,write_into, 1000);
+        fflush(stdin);
+        len = strlen(write_into);
+        printf("%s\n", "Name Invalid: must be longer than 0 characters.");
+        // top = read(0, write_into, 1000);
+        // printf("%s\n", write_into);
+        // printf("%d %d\n", len, top);
+    }
+    // game_t name_len = top;
+
+    // strcpy(write_into, "placeholder");
 }
 
 /** Cleans up on game over — should free any allocated memory so that the

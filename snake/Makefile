@@ -14,7 +14,7 @@ FLAGS += $(shell ncursesw5-config --cflags)
 endif
 
 FILES = $(wildcard src/*.c) $(wildcard src/*.h)
-OBJS = src/game.o src/game_setup.o src/render.o src/common.o src/linked_list.o src/mbstrings.o
+OBJS = src/game.o src/game_setup.o src/render.o src/common.o src/linked_list.o src/mbstrings.o src/game_over.o
 TEST_OBJS = src/game_test.c src/linked_list_test.c src/test_runner.c
 BINS = snake autograder
 

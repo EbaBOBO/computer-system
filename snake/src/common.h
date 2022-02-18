@@ -74,6 +74,8 @@ typedef struct game {
     int game_over;   // 1 if game is over, 0 otherwise
     int score;       // game score: 1 point for every food eaten
     board_t* board;  // pointer to the board struct for this game
+    char* name;
+    int name_len;
 } game_t;
 
 void set_seed(unsigned seed);

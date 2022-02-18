@@ -1,4 +1,9 @@
 #include "mbstrings.h"
+#include <stdio.h>
+#include <wchar.h>
+#include <locale.h>
+#include <string.h>
+#include <stdlib.h>
 
 /* mbslen - multi-byte string length
  * - Description: returns the number of UTF-8 code points ("characters")
@@ -24,5 +29,56 @@
  */
 size_t mbslen(const char* bytes) {
     // TODO: implement!
-    return 0;
+    // printf("%s\n", "mbslen");
+	// setlocale(LC_ALL, "C.UTF-8");
+	// wchar_t* c = bytes;
+	// wscanf(L"%lc", c);
+	// wprintf(L"%lc\n", c);
+
+    int len = strlen(bytes);
+    int count = 0;
+    // unsigned char st[len];
+    // strcpy(st,bytes);
+    unsigned char* str = (unsigned char*)bytes;
+    // char* str = bytes;
+    for(int i = 0; i<len; i++)
+    {
+        // printf("%c\n", *(str+i));
+        if((*(str+i)&0xc0) != 0x80)
+        {
+            count += 1;
+            // printf("%d\n", count);
+        }
+        
+    }
+
+
+
+
+    // for(int i = 0; i<len; i++)
+    // {
+    //     // wchar_t ch = *(bytes+i);
+    //     bi = stringToBinary(*(bytes+i));
+    //     printf("%lc\n", ch);
+    // }
+    
+    return count;
 }
+
+// char* stringToBinary(char* s) {
+//     if(s == NULL) return 0; /* no input string */
+//     size_t len = strlen(s);
+//     char *binary = malloc(len*8 + 1); // each char is one byte (8 bits) and + 1 at the end for null terminator
+//     binary[0] = '\0';
+//     for(size_t i = 0; i < len; ++i) {
+//         char ch = s[i];
+//         for(int j = 7; j >= 0; --j){
+//             if(ch & (1 << j)) {
+//                 strcat(binary,"1");
+//             } else {
+//                 strcat(binary,"0");
+//             }
+//         }
+//     }
+//     return binary;
+// }

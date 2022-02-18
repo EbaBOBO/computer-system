@@ -106,8 +106,9 @@ int main(int argc, char** argv) {
 
     // Read in the player's name & save its name and length
     // TODO: Implement (in Part 2B)
-    // char name_buffer[1000];
-    // read_name(name_buffer);
+    char name_buffer[1000];
+    read_name(name_buffer);
+    // mbslen(name_buffer);
     // ? save name_buffer in game struct ?
     // ? save mbslen(name_buffer) in game struct ?
 
