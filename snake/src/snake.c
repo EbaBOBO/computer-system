@@ -45,13 +45,13 @@ void end_game(game_t* game) {
     teardown(game);
 
     // ****************** UNCOMMENT THIS CODE IN PART 2B ***********************
-    /*
+    
     // Render final GAME OVER PRESS ANY KEY TO EXIT screen
     render_game_over(game);
     usleep(1000 * 1000);  // 1000ms
     cbreak(); // Leave halfdelay mode
     getch();
-    */
+    
 
     // tell ncurses that we're done
     endwin();
@@ -107,7 +107,9 @@ int main(int argc, char** argv) {
     // Read in the player's name & save its name and length
     // TODO: Implement (in Part 2B)
     char name_buffer[1000];
+    game.name_len = mbslen(name_buffer);
     read_name(name_buffer);
+    
     // mbslen(name_buffer);
     // ? save name_buffer in game struct ?
     // ? save mbslen(name_buffer) in game struct ?
