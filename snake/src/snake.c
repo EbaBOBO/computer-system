@@ -107,9 +107,14 @@ int main(int argc, char** argv) {
     // Read in the player's name & save its name and length
     // TODO: Implement (in Part 2B)
     char name_buffer[1000];
-    game.name_len = mbslen(name_buffer);
+
+    // printf("%s\n", game.name);
+    // printf("%s\n","Name > ");
+    // scanf("%[^\n]", name_buffer);//"%[^\n]"
+
     read_name(name_buffer);
-    
+    game.name_len = mbslen(name_buffer);
+    game.name = name_buffer;
     // mbslen(name_buffer);
     // ? save name_buffer in game struct ?
     // ? save mbslen(name_buffer) in game struct ?

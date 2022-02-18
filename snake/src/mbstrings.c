@@ -29,14 +29,22 @@
  */
 size_t mbslen(const char* bytes) {
     // TODO: implement!
+    if(bytes == NULL)
+        return -1;
     int len = strlen(bytes);
     int count = 0;
     // unsigned char st[len];
     // strcpy(st,bytes);
     unsigned char* str = (unsigned char*)bytes;
     // char* str = bytes;
+    // for(int i = 0; i<len; i++)
     for(int i = 0; i<len; i++)
     {
+        if((*(str+i)) == '\n')
+        {
+            *(str+i) = '\0';
+            break;
+        }
         if((*(str+i)&0xc0) != 0x80)
         {
             count += 1;

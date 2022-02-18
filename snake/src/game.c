@@ -202,31 +202,51 @@ void read_name(char* write_into) {
     // TODO: implement! (remove the call to strcpy once you begin your
     // implementation)
     // scanf("%[^\n]",str);
+    // game_t game;
     printf("%s\n","Name > ");
-    scanf("%[^\n]", write_into);//"%[^\n]"
+    // scanf("%[^\n]", write_into);//"%[^\n]"
     // fflush(stdin);
     // int len = strlen(write_into);
     // size_t top;
-    // int top;
-    read(0, write_into, 1000);
-    fflush(stdin);
-    int len = strlen(write_into);
+    int top;
+    top = read(0, write_into, 1000);
+    // fflush(stdin);
+    
+    // int len = strlen(write_into);
     // printf("%s\n", write_into);
-    mbslen(write_into);
+    
     // printf("%d %d\n", len, top);
-    while(len<1)
+    while(top == 1)
     {
         // scanf("%s", write_into);
-
-        read(0,write_into, 1000);
-        fflush(stdin);
-        len = strlen(write_into);
+        // scanf("%[^\n]", write_into);
         printf("%s\n", "Name Invalid: must be longer than 0 characters.");
+        printf("%s\n","Name > ");
+        top = read(0,write_into, 1000);
+        // fflush(stdin);
+        // len = strlen(write_into);
+        
         // top = read(0, write_into, 1000);
         // printf("%s\n", write_into);
         // printf("%d %d\n", len, top);
     }
-    // game_t name_len = top;
+
+    // char * d= (char *)malloc((strlen(write_into)-1)*sizeof(char));
+    // memcpy(d,write_into,(strlen(write_into)-1));
+    // // printf("%s",d);
+    // write_into = d;
+    // free(d);
+    // for(int i = 0;i<strlen(write_into);i++ )
+    // {
+    //     if((*(write_into + i)) == '\n')
+    //         {
+    //             *(write_into + i) = '\0';
+    //         }
+    // }
+
+    return ;
+    // game.name_len = mbslen(write_into);
+    // game.name = write_into;
 
     // strcpy(write_into, "placeholder");
 }
