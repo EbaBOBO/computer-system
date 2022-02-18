@@ -202,12 +202,13 @@ void read_name(char* write_into) {
     // TODO: implement! (remove the call to strcpy once you begin your
     // implementation)
     // scanf("%[^\n]",str);
+    printf("%s\n","Name > ");
     scanf("%[^\n]", write_into);//"%[^\n]"
     // fflush(stdin);
     // int len = strlen(write_into);
     // size_t top;
-    int top;
-    top = read(0, write_into, 1000);
+    // int top;
+    read(0, write_into, 1000);
     fflush(stdin);
     int len = strlen(write_into);
     // printf("%s\n", write_into);
@@ -217,7 +218,7 @@ void read_name(char* write_into) {
     {
         // scanf("%s", write_into);
 
-        top = read(0,write_into, 1000);
+        read(0,write_into, 1000);
         fflush(stdin);
         len = strlen(write_into);
         printf("%s\n", "Name Invalid: must be longer than 0 characters.");

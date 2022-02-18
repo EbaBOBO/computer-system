@@ -23,7 +23,7 @@
  *  - height: a positive int equal to the desired outer height
  */
 board_init_status_t initialize_default_board(board_t* board) {
-    printf("%s\n", "initialize_default_board");
+    // printf("%s\n", "initialize_default_board");
     board->width = 20;
     board->height = 10;
     board->cells = calloc(20 * 10, sizeof(int));
