@@ -6,7 +6,9 @@
 struct dmalloc_stats initialize = {.nactive = 0, .active_size = 0, .ntotal = 0, .total_size = 0,
                                     .nfail = 0, .fail_size = 0, .heap_min = 0, .heap_max = 0};
 
-
+int valid_free = 0;
+int malloc_stats = 0;
+char* malloc_address = NULL;
 
 /**
  * dmalloc(sz,file,line)
@@ -32,6 +34,9 @@ void* dmalloc(size_t sz, const char* file, long line) {
 
     char* ptr = (char*)base_malloc(sz + sizeof(size_t));
     ptr[0] = sz;
+    // ptr[1] = 1;
+    valid_free += 1;
+    malloc_address = ptr;
    
     if (ptr)
     {
@@ -51,6 +56,7 @@ void* dmalloc(size_t sz, const char* file, long line) {
 
     }
     // base_free(&ptr);
+    malloc_stats = 1;
     return ptr + sizeof(size_t);
 }
 
@@ -66,8 +72,21 @@ void* dmalloc(size_t sz, const char* file, long line) {
 void dfree(void* ptr, const char* file, long line) {
     (void) file, (void) line;   // avoid uninitialized variable warnings
     // Your code here.
+    if(!ptr) {
+        return ;
+    }
     char* sz = (char*)ptr - sizeof(size_t);
-    // char* sz = (char*)ptr;
+    //  test16-19
+    if((malloc_stats == 0) || (ptr < (void*)initialize.heap_min))
+    {
+        fprintf(stderr, "MEMORY BUG???: invalid free of pointer , not in heap\n");
+        abort();
+    }
+    if(valid_free <= 0)
+    {
+        fprintf(stderr,"MEMORY BUG???: invalid free of pointer %p, double free\n",ptr);
+        abort();
+    }
 
     if (ptr)
     {
@@ -76,6 +95,8 @@ void dfree(void* ptr, const char* file, long line) {
         // initialize.ntotal -= 1;
         initialize.nactive -= 1;
     }
+    valid_free -= 1;
+    // double_free = 1;
     base_free(ptr);
 }
 
