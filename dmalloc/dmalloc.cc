@@ -2,6 +2,8 @@
 #include "dmalloc.hh"
 #include <cassert>
 #include <cstring>
+#include <unordered_map>
+using namespace std;
 
 struct dmalloc_stats initialize = {.nactive = 0, .active_size = 0, .ntotal = 0, .total_size = 0,
                                     .nfail = 0, .fail_size = 0, .heap_min = 0, .heap_max = 0};
@@ -9,6 +11,9 @@ struct dmalloc_stats initialize = {.nactive = 0, .active_size = 0, .ntotal = 0, 
 int valid_free = 0;
 int malloc_stats = 0;
 uintptr_t malloc_address = 0;
+uintptr_t end_address = 0;
+unordered_map<char*, size_t> malloc_size;
+// unsigned long long ptr_size = 0;
 
 /**
  * dmalloc(sz,file,line)
@@ -32,8 +37,11 @@ void* dmalloc(size_t sz, const char* file, long line) {
         return NULL;
     }
 
-    char* ptr = (char*)base_malloc(sz + sizeof(size_t));
-    ptr[0] = sz;
+    // ptr_size = sz;
+    char* ptr = (char*)base_malloc(sz + sizeof(size_t) + sizeof(size_t));
+    ptr[0] = '0' + sz;
+    malloc_size[ptr] = sz;
+    ptr[sz + sizeof(size_t) + 1] = 'E';
     // ptr[1] = 1;
     // valid_free += (uintptr_t) ptr;
     valid_free += 1;
@@ -52,7 +60,7 @@ void* dmalloc(size_t sz, const char* file, long line) {
             initialize.heap_min = (uintptr_t) ptr;
         }
         if (!initialize.heap_max || initialize.heap_max < (uintptr_t) ptr + sz) {
-            initialize.heap_max = (uintptr_t) ptr + sz + sizeof(size_t);
+            initialize.heap_max = (uintptr_t) ptr + sz + sizeof(size_t) + sizeof(size_t);
         }
 
     }
@@ -73,34 +81,43 @@ void dfree(void* ptr, const char* file, long line) {
     (void) file, (void) line;   // avoid uninitialized variable warnings
     // Your code here.
     uintptr_t free_address = (uintptr_t) ptr;
+    
     if(!ptr) {
         return ;
     }
     char* sz = (char*)ptr - sizeof(size_t);
+    size_t size = malloc_size[sz];
     //  test16-19
     if((malloc_stats == 0) || (ptr < (void*)initialize.heap_min))
     {
         fprintf(stderr, "MEMORY BUG???: invalid free of pointer , not in heap\n");
         abort();
     }
-    if(valid_free == 0)
+    //test20
+    if(valid_free <= 0)
     {
         fprintf(stderr,"MEMORY BUG???: invalid free of pointer %p, double free\n",ptr);
         abort();
     }
-
+    //test21-24
     if(free_address >(malloc_address + sizeof(size_t)))
     {
-        // fprintf(stderr,"MEMORY BUG???: invalid free of pointer %p, not allocated\n",ptr);
         fprintf(stderr,"MEMORY BUG: test%s:10: invalid free of pointer %p, not allocated\n",file, ptr);
-        
         abort();
     }
+    //test25
+    // int size = sz[0];
+    if(sz[size+ sizeof(size_t) + 1] != 'E')
+    {
+        fprintf(stderr,"MEMORY BUG???: detected wild write during free of pointer %p\n", ptr);
+        abort();
+    }
+
+
     if (ptr)
     {
-        // initialize.total_size -= sz;
-        initialize.active_size -= sz[0];
-        // initialize.ntotal -= 1;
+        initialize.active_size -= size;
+        // initialize.active_size -= ptr_size;
         initialize.nactive -= 1;
     }
     valid_free -= 1;
