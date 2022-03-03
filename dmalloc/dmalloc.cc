@@ -3,6 +3,9 @@
 #include <cassert>
 #include <cstring>
 #include <unordered_map>
+#include <string.h>
+#include <iostream>
+#include <sys/mman.h>
 using namespace std;
 
 struct dmalloc_stats initialize = {.nactive = 0, .active_size = 0, .ntotal = 0, .total_size = 0,
@@ -12,7 +15,9 @@ int valid_free = 0;
 int malloc_stats = 0;
 uintptr_t malloc_address = 0;
 uintptr_t end_address = 0;
+const char* filename = NULL;
 unordered_map<char*, size_t> malloc_size;
+unordered_map<char*, long> malloc_line;
 // unsigned long long ptr_size = 0;
 
 /**
@@ -38,10 +43,12 @@ void* dmalloc(size_t sz, const char* file, long line) {
     }
 
     // ptr_size = sz;
-    char* ptr = (char*)base_malloc(sz + sizeof(size_t) + sizeof(size_t));
-    ptr[0] = '0' + sz;
+    char* ptr = (char*)base_malloc(sz + sizeof(size_t));
+    // ptr[0] = '0' + sz;
     malloc_size[ptr] = sz;
-    ptr[sz + sizeof(size_t) + 1] = 'E';
+    malloc_line[ptr] = line;
+    filename = file;
+    ptr[sz] = 'E';
     // ptr[1] = 1;
     // valid_free += (uintptr_t) ptr;
     valid_free += 1;
@@ -60,12 +67,12 @@ void* dmalloc(size_t sz, const char* file, long line) {
             initialize.heap_min = (uintptr_t) ptr;
         }
         if (!initialize.heap_max || initialize.heap_max < (uintptr_t) ptr + sz) {
-            initialize.heap_max = (uintptr_t) ptr + sz + sizeof(size_t) + sizeof(size_t);
+            initialize.heap_max = (uintptr_t) ptr + sz + sizeof(size_t);
         }
 
     }
     malloc_stats = 1;
-    return ptr + sizeof(size_t);
+    return ptr;
 }
 
 /**
@@ -85,7 +92,9 @@ void dfree(void* ptr, const char* file, long line) {
     if(!ptr) {
         return ;
     }
-    char* sz = (char*)ptr - sizeof(size_t);
+    // auto map_ptr_size = malloc_size.find((char*) ptr);
+
+    char* sz = (char*)ptr;
     size_t size = malloc_size[sz];
     //  test16-19
     if((malloc_stats == 0) || (ptr < (void*)initialize.heap_min))
@@ -100,14 +109,16 @@ void dfree(void* ptr, const char* file, long line) {
         abort();
     }
     //test21-24
-    if(free_address >(malloc_address + sizeof(size_t)))
+    if(free_address >malloc_address)
     {
-        fprintf(stderr,"MEMORY BUG: test%s:10: invalid free of pointer %p, not allocated\n",file, ptr);
+        int error = free_address - malloc_address;
+        fprintf(stderr,"MEMORY BUG: %s:%ld: invalid free of pointer %p, not allocated\n",file, line,ptr);
+        fprintf(stderr,"%s:%ld: %p is %d bytes inside a %ld byte region allocated here\n",file, malloc_line[(char*)malloc_address],(char*)ptr, error,malloc_size[(char*)malloc_address]);
         abort();
     }
     //test25
     // int size = sz[0];
-    if(sz[size+ sizeof(size_t) + 1] != 'E')
+    if(sz[size] != 'E')
     {
         fprintf(stderr,"MEMORY BUG???: detected wild write during free of pointer %p\n", ptr);
         abort();
@@ -122,6 +133,14 @@ void dfree(void* ptr, const char* file, long line) {
     }
     valid_free -= 1;
     base_free(ptr);
+    
+    auto map_ptr_size = malloc_size.find((char*) ptr);
+    if(map_ptr_size != malloc_size.end())
+        malloc_size.erase((char*)ptr);
+    auto lines = malloc_line.find((char*) ptr);
+    if(lines != malloc_line.end())
+        malloc_line.erase((char*)ptr);
+
 }
 
 /**
@@ -197,4 +216,14 @@ void print_statistics() {
  */
 void print_leak_report() {
     // Your code here.
+    if(valid_free == 0)
+        return ;
+    for(auto t : malloc_size)
+    {
+        printf("LEAK CHECK: %s:%ld: allocated object %p with size %ld\n", filename, malloc_line[t.first], t.first, t.second);
+        // cout <<"LEAK CHECK: "<< filename << ": allocated object "<< &it->first <<" with size "<< malloc_size[it->first]<<endl;
+    }
+        
+
+
 }
