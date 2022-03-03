@@ -92,10 +92,15 @@ void dfree(void* ptr, const char* file, long line) {
     if(!ptr) {
         return ;
     }
-    // auto map_ptr_size = malloc_size.find((char*) ptr);
 
     char* sz = (char*)ptr;
-    size_t size = malloc_size[sz];
+    size_t size = 0;
+    // auto map_ptr_size = malloc_size.find((char*) ptr);
+    if (malloc_size.find((char*) ptr) != malloc_size.end())
+    {
+        size = malloc_size[(char*) ptr];
+    }
+
     //  test16-19
     if((malloc_stats == 0) || (ptr < (void*)initialize.heap_min))
     {
@@ -109,7 +114,7 @@ void dfree(void* ptr, const char* file, long line) {
         abort();
     }
     //test21-24
-    if(free_address >malloc_address)
+    if(free_address > malloc_address || malloc_size.find((char*) ptr) == malloc_size.end())
     {
         int error = free_address - malloc_address;
         fprintf(stderr,"MEMORY BUG: %s:%ld: invalid free of pointer %p, not allocated\n",file, line,ptr);
