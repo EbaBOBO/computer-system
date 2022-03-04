@@ -42,15 +42,11 @@ void* dmalloc(size_t sz, const char* file, long line) {
         return NULL;
     }
 
-    // ptr_size = sz;
     char* ptr = (char*)base_malloc(sz + sizeof(size_t));
-    // ptr[0] = '0' + sz;
     malloc_size[ptr] = sz;
     malloc_line[ptr] = line;
     filename = file;
     ptr[sz] = 'E';
-    // ptr[1] = 1;
-    // valid_free += (uintptr_t) ptr;
     valid_free += 1;
     malloc_address += (uintptr_t) ptr;
    
@@ -60,8 +56,6 @@ void* dmalloc(size_t sz, const char* file, long line) {
         initialize.active_size += sz;
         initialize.ntotal += 1;
         initialize.nactive += 1;
-        // initialize.heap_min = (uintptr_t)ptr;
-        // initialize.heap_max = (uintptr_t)ptr + sz + sizeof(size_t);
 
         if (!initialize.heap_min || initialize.heap_min > (uintptr_t) ptr) {
             initialize.heap_min = (uintptr_t) ptr;
@@ -95,7 +89,6 @@ void dfree(void* ptr, const char* file, long line) {
 
     char* sz = (char*)ptr;
     size_t size = 0;
-    // auto map_ptr_size = malloc_size.find((char*) ptr);
     if (malloc_size.find((char*) ptr) != malloc_size.end())
     {
         size = malloc_size[(char*) ptr];
@@ -226,9 +219,30 @@ void print_leak_report() {
     for(auto t : malloc_size)
     {
         printf("LEAK CHECK: %s:%ld: allocated object %p with size %ld\n", filename, malloc_line[t.first], t.first, t.second);
-        // cout <<"LEAK CHECK: "<< filename << ": allocated object "<< &it->first <<" with size "<< malloc_size[it->first]<<endl;
     }
-        
+}
 
+/// drealloc(ptr, sz, file, line)
+///    Reallocate the dynamic memory pointed to by `ptr` to hold at least
+///    `sz` bytes, returning a pointer to the new block. If `ptr` is
+///    `nullptr`, behaves like `dmalloc(sz, file, line)`. If `sz` is 0,
+///    behaves like `dfree(ptr, file, line)`. The allocation request
+///    was at location `file`:`line`.
+void* drealloc(void* ptr, size_t sz, const char* file, long line)
+{
+    if(!ptr) {
+        return dmalloc(sz, file, line);
+    }
 
+    if(!sz) {
+        dfree(ptr, file, line);
+    }
+
+    void* new_ptr = base_realloc(ptr, sz);
+    malloc_size[(char*)ptr] = sz;
+
+    *((char*)new_ptr + sz) = 'E';
+
+    base_free(ptr);
+    return new_ptr;
 }

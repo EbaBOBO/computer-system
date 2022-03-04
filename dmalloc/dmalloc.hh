@@ -45,6 +45,8 @@ void dfree(void* ptr, const char* file, long line);
  */
 void* dcalloc(size_t nmemb, size_t sz, const char* file, long line);
 
+void* dralloc(void* ptr, size_t size, const char* file, long line);
+
 // struct to store global information about the dalloc functions
 struct dmalloc_stats {
     unsigned long long nactive;         // # active allocations
@@ -83,12 +85,14 @@ void print_leak_report();
 void* base_malloc(size_t sz);
 void base_free(void* ptr);
 void base_allocator_disable(bool is_disabled);
+void* base_realloc(void* ptr, size_t size);
 
 /// Preprocessor macros to override system versions with our versions.
 #if !DMALLOC_DISABLE
 #define malloc(sz)          dmalloc((sz), __FILE__, __LINE__)
 #define free(ptr)           dfree((ptr), __FILE__, __LINE__)
 #define calloc(nmemb, sz)   dcalloc((nmemb), (sz), __FILE__, __LINE__)
+#define realloc(ptr,sz)     drealloc((ptr), (sz), __FILE__, __LINE__)
 #endif
 
 

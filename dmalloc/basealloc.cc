@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <vector>
 #include <sys/mman.h>
+#include <cstring>
 
 
 // This file contains a base memory allocator guaranteed not to
@@ -65,6 +66,36 @@ void* base_malloc(size_t sz) {
     return reinterpret_cast<void*>(ptr);
 }
 
+void* base_realloc(void* ptr, size_t size) {
+    void* new_pointer = NULL;
+
+    if(!ptr)
+    {
+        return malloc(size);
+    }
+    if(!size)
+        free(ptr);
+
+    size_t prev_sz = allocs[(uintptr_t) ptr];
+    if (prev_sz > size )
+    {
+        new_pointer = malloc(size);
+        memcpy(new_pointer, ptr, size);
+        base_free(ptr);
+        auto& last_element = frees[frees.size() - 1];
+        new_pointer = (void*) last_element.first;
+        allocs[(uintptr_t) new_pointer] = size;
+        frees.pop_back();
+        return new_pointer;
+    }
+    else
+    {
+        allocs[(uintptr_t) ptr] = size;
+        return ptr;
+    }
+
+}
+
 void base_free(void* ptr) {
     if (disabled || !ptr) {
         free(ptr);
@@ -79,6 +110,7 @@ void base_free(void* ptr) {
         --disabled;
     }
 }
+
 
 void base_allocator_disable(bool d) {
     disabled = d;
