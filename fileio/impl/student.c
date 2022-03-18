@@ -386,22 +386,6 @@ ssize_t io300_read(struct io300_file *const f, char *const buff, size_t const sz
     //tail
     size_t tail = sz - title;
 
-    // if (tail > f->cache_rest)
-    // {
-    //     memcpy(buff + title, f->rest, f->cache_rest);
-    //     f->rest += f->cache_rest;
-    //     size_t temp = f->cache_rest;
-    //     f->cache_rest = 0;
-    //     return title + temp; 
-    // }
-    // else
-    // {
-    //     memcpy(buff + title, f->rest, tail);
-    //     f->cache_rest -= tail;
-    //     f->rest += tail;
-    //     return title + tail;
-    // }
-
     if (tail <= f->cache_rest)
     {
         memcpy(buff + title, f->rest, tail);
@@ -428,7 +412,7 @@ ssize_t io300_write(struct io300_file *const f, const char *buff, size_t const s
     // TODO: Implement this
     //1. rest > sz
     // if (f->cache_rest >= sz)
-    if (f->cache + CACHE_SIZE > f->rest + sz)
+    if ((int)(f->cache + CACHE_SIZE - f->rest) > (int)sz)
     {
         memcpy(f->rest, buff, sz);
         f->rest += sz;
@@ -489,36 +473,22 @@ ssize_t io300_write(struct io300_file *const f, const char *buff, size_t const s
     }
     //tail
     size_t tail = sz - title;
-    memcpy(f->rest, buff + title, tail);
-    // f->cache_rest -= tail;
-    f->rest += tail;
-    f->write_stat = 1;
-    if(f->cache_rest >= tail)
+    if (tail <= f->cache_rest)
     {
+        memcpy(f->rest, buff + title, tail);
         f->cache_rest -= tail;
+        f->rest += tail;
+        f->write_stat = 1;
     }
     else
     {
+        memcpy(f->rest, buff + title, tail);
+        // size_t temp = f->cache_rest;
+        // f->rest += temp;
+        f->rest += tail;
         f->cache_rest = 0;
+        f->write_stat = 1;
     }
-    
-
-    // if (tail <= f->cache_rest)
-    // {
-    //     memcpy(f->rest, buff + title, tail);
-    //     f->cache_rest -= tail;
-    //     f->rest += tail;
-    //     f->write_stat = 1;
-    // }
-    // else
-    // {
-    //     memcpy(f->rest, buff + title, tail);
-    //     // size_t temp = f->cache_rest;
-    //     // f->rest += temp;
-    //     f->rest += tail;
-    //     f->cache_rest = 0;
-    //     f->write_stat = 1;
-    // }
     return sz;
 
     }
