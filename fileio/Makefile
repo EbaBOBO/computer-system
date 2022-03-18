@@ -4,7 +4,7 @@ CC           := gcc
 # Which sanitizers should be enabled? These are on by default and you should
 # keep it that way
 # You should not be making any allocations, so no leak sanitizer (it messes with strace)
-SANS_ENABLED ?= -fsanitize=address -fsanitize=undefined
+SANS_ENABLED ?=-fsanitize=address -fsanitize=undefined
 # Flags to be passed to the C compiler.
 # -ggdb3 says to embed as much debugging information as possible
 # -Wall -Wextra says to enable all standard, and some extra warnings

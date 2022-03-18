@@ -78,3 +78,14 @@ ssize_t io300_write(struct io300_file *f, const char *buff, size_t nbytes);
 int io300_flush(struct io300_file *f);
 
 #endif
+
+
+/*
+1. 
+metadata:
+buffer_size: 0
+start_address:0x0
+offset: 0
+
+
+*/

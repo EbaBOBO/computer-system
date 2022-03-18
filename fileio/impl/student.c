@@ -54,7 +54,11 @@ struct io300_file {
 
 
     // TODO: Your properties go here
-
+    off_t file_offset; //the position of file
+    off_t file_head; // the head position of the cache
+    size_t cache_rest; //the rest number of the cache
+    int write_stat; // whether we need to flush
+    char *rest; //the rest of the cache
 
 
     /* Used for debugging, keep track of which io300_file is which */
@@ -135,6 +139,15 @@ struct io300_file *io300_open(const char *const path, char *description) {
     }
     ret->description = description;
     // TODO: Initialize your file
+    // ret->file_offset = 0;
+    ret->file_head = 0;
+    // ret->cache_rest = CACHE_SIZE;
+    ret->write_stat = 0;
+    // read(ret->fd, ret->cache, CACHE_SIZE);
+    // // ret->rest = NULL;
+    ret->rest = ret->cache;
+    // ret->cache_rest = read(ret->fd, ret->cache, CACHE_SIZE);
+    ret->cache_rest = pread(ret->fd, ret->cache, CACHE_SIZE,ret->file_head);
 
     check_invariants(ret);
     dbg(ret, "Just finished initializing file from path: %s\n", path);
@@ -146,6 +159,27 @@ int io300_seek(struct io300_file *const f, off_t const pos) {
     f->stats.seeks++;
 
     // TODO: Implement this
+    
+    if (pos >= f->file_head && pos <= (f->file_head + CACHE_SIZE - 1))
+    {
+        f->cache_rest -= pos - f->file_head;
+        f->rest = pos - f->file_head + f->cache; 
+    }
+    else
+    {
+        if (f->write_stat == 1)
+        {
+            io300_flush(f);
+            f->write_stat = 0;
+        }
+        f->rest = f->cache;
+        f->file_head = pos;
+        // f->cache_rest = read(f->fd, f->cache, CACHE_SIZE); // fill in the cache
+        f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head);
+
+    }
+
+
     return lseek(f->fd, pos, SEEK_SET);
 }
 
@@ -157,6 +191,7 @@ int io300_close(struct io300_file *const f) {
             f->description, f->stats.read_calls, f->stats.write_calls, f->stats.seeks);
 #endif
     // TODO: Implement this
+    io300_flush(f);
     close(f->fd);
     free(f->cache);
     free(f);
@@ -180,32 +215,337 @@ int io300_readc(struct io300_file *const f) {
     check_invariants(f);
     // TODO: Implement this
     unsigned char c;
-    if (read(f->fd, &c, 1) == 1) {
-        return c;
-    } else {
-        return -1;
+    // char c;
+    if(f->cache_rest <= 0)
+    {
+        if(f->write_stat == 1)
+        {
+            // f->write_stat = 0;
+            io300_flush(f);
+            f->write_stat = 0;
+        }
+        f->file_head += CACHE_SIZE;
+        f->rest = f->cache;
+        // f->cache_rest = read(f->fd, f->cache, CACHE_SIZE);
+        f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head);
+        
     }
+        c = *(f->rest);
+        f->rest += 1;
+        f->cache_rest -= 1;
+
+    return c;
+
+    // if(f->cache_rest > 0)
+    // {
+    //     c = *(f->rest);
+    //     f->rest += 1;
+    //     f->cache_rest -= 1;
+        
+    // }
+    // else
+    // {
+    //     //if full, flush ad read to fill in the cache
+    //     if(f->write_stat == 1)
+    //     {
+    //         // f->write_stat = 0;
+    //         io300_flush(f);
+    //     }
+    //     f->file_head += CACHE_SIZE;
+    //     f->rest = f->cache;
+    //     // f->cache_rest = read(f->fd, f->cache, CACHE_SIZE);
+    //     f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head);
+
+    //     //read
+    //     // c = *(f->rest);
+    //     // f->rest += 1;
+    //     // f->cache_rest -= 1;
+    
+    // }
+    // printf("%c\n", c);
+    // return c;
+
+    // if (read(f->fd, &c, 1) == 1) {
+    //     return c;
+    // } else {
+    //     return -1;
+    // }
 }
 int io300_writec(struct io300_file *f, int ch) {
     check_invariants(f);
     // TODO: Implement this
-    char const c = (char)ch;
-    return write(f->fd, &c, 1) == 1 ? ch : -1;
+    unsigned char const c = (unsigned char)ch;
+    // char const c = (unsigned char)ch;
+    if(f->rest >= f->cache + CACHE_SIZE)
+    {
+        if(f->write_stat == 1)
+        {
+            // f->write_stat = 0;
+            io300_flush(f);
+            f->write_stat = 0;
+        }
+        f->file_head += CACHE_SIZE;
+        f->rest = f->cache;
+        // f->cache_rest = read(f->fd, f->cache, CACHE_SIZE);
+        f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head);
+    }
+        memcpy(f->rest, &c, 1);
+        f->rest += 1;
+        f->cache_rest -= 1;
+        f->write_stat = 1;
+    return ch;
+
+    // if(f->cache_rest > 0)
+    // {
+    //     memcpy(f->rest, &c, 1);
+    //     f->rest += 1;
+    //     f->cache_rest -= 1;
+    //     f->write_stat = 1;
+    // }
+    // else
+    // {
+    //     //if full, flush ad read to fill in the cache
+    //     if(f->write_stat == 1)
+    //     {
+    //         io300_flush(f);
+    //     }
+    //     f->file_head += CACHE_SIZE;
+    //     f->rest = f->cache;
+    //     // f->cache_rest = read(f->fd, f->cache, CACHE_SIZE);
+    //     f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head);
+    //     //write
+    //     memcpy(f->rest, &c, 1);
+    //     f->rest += 1;
+    //     f->cache_rest -= 1;
+    //     f->write_stat = 1;
+    // }
+    // return ch;
+
+    
+    // return write(f->fd, &c, 1) == 1 ? ch : -1;
 }
 
 ssize_t io300_read(struct io300_file *const f, char *const buff, size_t const sz) {
     check_invariants(f);
     // TODO: Implement this
-    return read(f->fd, buff, sz);
+
+    //1. rest > sz
+    if (f->cache_rest >= sz)
+    {
+        memcpy(buff, f->rest, sz);
+        f->rest += sz;
+        f->cache_rest -= sz;
+        return sz;
+    }
+    else
+    {
+    //2. rest < sz
+    size_t title = 0;
+    //2-1 
+    if(f->cache_rest > 0)
+    {
+        title = f->cache_rest;
+        memcpy(buff, f->rest, title);
+        f->rest += title;
+    }
+    if(f->write_stat == 1)
+    {
+        io300_flush(f);
+        f->write_stat = 0;
+    }
+    f->file_head += CACHE_SIZE;
+    f->rest = f->cache;
+    f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head);  
+
+    if (f->cache_rest <=0)
+    {
+        return title;
+    }
+
+    // use a while loop to read repeatly
+    // while(f->cache_rest == CACHE_SIZE && (sz - title) >= CACHE_SIZE)
+    while((sz - title) >= CACHE_SIZE)
+    {
+        memcpy(title + buff, f->rest, CACHE_SIZE);
+        f->rest += CACHE_SIZE;
+        if(f->write_stat == 1)
+        {
+            io300_flush(f);
+            f->write_stat = 0;
+        }
+        f->file_head += CACHE_SIZE;
+        f->rest = f->cache;
+        f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head); 
+        title += CACHE_SIZE;
+
+        if(f->cache_rest <= 0)
+        {
+            return title;
+        }
+    }
+    //tail
+    size_t tail = sz - title;
+
+    // if (tail > f->cache_rest)
+    // {
+    //     memcpy(buff + title, f->rest, f->cache_rest);
+    //     f->rest += f->cache_rest;
+    //     size_t temp = f->cache_rest;
+    //     f->cache_rest = 0;
+    //     return title + temp; 
+    // }
+    // else
+    // {
+    //     memcpy(buff + title, f->rest, tail);
+    //     f->cache_rest -= tail;
+    //     f->rest += tail;
+    //     return title + tail;
+    // }
+
+    if (tail <= f->cache_rest)
+    {
+        memcpy(buff + title, f->rest, tail);
+        f->cache_rest -= tail;
+        f->rest += tail;
+        return title + tail;
+    }
+    else
+    {
+        memcpy(buff + title, f->rest, f->cache_rest);
+        size_t temp = f->cache_rest;
+        f->rest += temp;
+        f->cache_rest = 0;
+        return title + temp; 
+    }
+
+    }
+
+
+    // return read(f->fd, buff, sz);
 }
 ssize_t io300_write(struct io300_file *const f, const char *buff, size_t const sz) {
     check_invariants(f);
     // TODO: Implement this
-    return write(f->fd, buff, sz);
+    //1. rest > sz
+    // if (f->cache_rest >= sz)
+    if (f->cache + CACHE_SIZE > f->rest + sz)
+    {
+        memcpy(f->rest, buff, sz);
+        f->rest += sz;
+        f->cache_rest -= sz;
+        f->write_stat = 1;
+        return sz;
+    }
+    else
+    {
+    //2. rest < sz
+    // size_t title = 0;
+    size_t title = (size_t)(f->cache + CACHE_SIZE - f->rest);
+    memcpy(f->rest, buff, title);
+    f->rest += title;
+    f->write_stat = 1;
+    // memcpy()
+    //2-1 
+    // if(f->cache_rest > 0)
+    // {
+    //     // title = f->cache_rest;
+    //     // title = (size_t)(f->cache + CACHE_SIZE - f->rest);
+    //     memcpy(f->rest, buff, title);
+    //     f->rest += title;
+    //     f->write_stat = 1;
+    // }
+    if(f->write_stat == 1)
+    {
+        io300_flush(f);
+        f->write_stat = 0;
+    }
+    f->file_head += CACHE_SIZE;
+    f->rest = f->cache;
+    f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head);  
+    // if (f->cache_rest <=0)
+    // {
+    //     return title;
+    // }
+
+    // use a while loop to read repeatly
+    while((sz - title) >= CACHE_SIZE)
+    {
+        memcpy(f->rest , title + buff, CACHE_SIZE);
+        f->write_stat = 1;
+        f->rest += CACHE_SIZE;
+        if(f->write_stat == 1)
+        {
+            io300_flush(f);
+            f->write_stat = 0;
+        }
+        f->file_head += CACHE_SIZE;
+        f->rest = f->cache;
+        f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head); 
+        title += CACHE_SIZE;
+        // if(f->cache_rest <= 0)
+        // {
+        //     return title;
+        // }
+    }
+    //tail
+    size_t tail = sz - title;
+    memcpy(f->rest, buff + title, tail);
+    // f->cache_rest -= tail;
+    f->rest += tail;
+    f->write_stat = 1;
+    if(f->cache_rest >= tail)
+    {
+        f->cache_rest -= tail;
+    }
+    else
+    {
+        f->cache_rest = 0;
+    }
+    
+
+    // if (tail <= f->cache_rest)
+    // {
+    //     memcpy(f->rest, buff + title, tail);
+    //     f->cache_rest -= tail;
+    //     f->rest += tail;
+    //     f->write_stat = 1;
+    // }
+    // else
+    // {
+    //     memcpy(f->rest, buff + title, tail);
+    //     // size_t temp = f->cache_rest;
+    //     // f->rest += temp;
+    //     f->rest += tail;
+    //     f->cache_rest = 0;
+    //     f->write_stat = 1;
+    // }
+    return sz;
+
+    }
+
+    // return write(f->fd, buff, sz);
 }
 
 int io300_flush(struct io300_file *const f) {
     check_invariants(f);
     // TODO: Implement this
-    return 0;
+    //rewrite : head, rest, cache_rest, write_stat
+    // size_t r = write(f->fd, f->rest, CACHE_SIZE);
+
+    // if(f->write_stat == 1) {
+    //     size_t rs = write(f->fd, f->cache, (int)(f->rest - f->cache));
+    //     f->write_stat = 0;
+    //     return rs;
+    // }
+    // return 0;
+
+    size_t rs = pwrite(f->fd, f->cache, (int)(f->rest - f->cache), f->file_head);
+    return rs;
+
+    // f->write_stat = 0;
+    // f->file_head += CACHE_SIZE;
+    // f->rest = f->cache;
+    // f->cache_rest = read(f->fd, f->cache, CACHE_SIZE);
+
+    
 }
