@@ -149,6 +149,7 @@ struct io300_file *io300_open(const char *const path, char *description) {
     // ret->cache_rest = read(ret->fd, ret->cache, CACHE_SIZE);
     ret->cache_rest = pread(ret->fd, ret->cache, CACHE_SIZE,ret->file_head);
 
+
     check_invariants(ret);
     dbg(ret, "Just finished initializing file from path: %s\n", path);
     return ret;
@@ -328,7 +329,7 @@ int io300_writec(struct io300_file *f, int ch) {
 ssize_t io300_read(struct io300_file *const f, char *const buff, size_t const sz) {
     check_invariants(f);
     // TODO: Implement this
-
+////////////////////////////////////////////////////
     //1. rest > sz
     if (f->cache_rest >= sz)
     {
@@ -403,10 +404,147 @@ ssize_t io300_read(struct io300_file *const f, char *const buff, size_t const sz
     }
 
     }
-
-
-    // return read(f->fd, buff, sz);
 }
+
+//////////////////////// stride
+// ssize_t io300_read(struct io300_file *const f, char *const buff, size_t const sz, int stride) {
+//     check_invariants(f);
+//     // TODO: Implement this
+//     off_t file_size = io300_filesize(f);
+//     size_t file_offset = f->file_head + CACHE_SIZE - f->cache_rest;
+//     //1. rest > sz
+//     if (f->cache_rest >= sz)
+//     {
+//         for(int i=0; i < sz; i++)
+//         {
+//             if (file_offset > file_size)
+//             {
+//                 return -1;
+//             }
+//             memcpy(buff, f->rest, 1);
+//             f->rest += 1;
+//             f->cache_rest -= 1;
+//             file_offset += stride;
+//         }
+//         return sz;
+//     }
+//     else
+//     {
+//     //2. rest < sz
+//     size_t title = 0;
+//     //2-1 
+//     if(f->cache_rest > 0)
+//     {
+//         title = f->cache_rest;
+//         // memcpy(buff, f->rest, title);
+//         for(int i=0; i < title; i++)
+//         {
+//             if (file_offset > file_size)
+//             {
+//                 return -1;
+//             }
+//             memcpy(buff, f->rest, 1);
+//             f->rest += 1;
+//             f->cache_rest -= 1;
+//             file_offset += stride;
+//         }
+
+//         // f->rest += title;
+//     }
+//     if(f->write_stat == 1)
+//     {
+//         io300_flush(f);
+//         f->write_stat = 0;
+//     }
+//     f->file_head += CACHE_SIZE;
+//     f->rest = f->cache;
+//     f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head);  
+
+//     if (f->cache_rest <=0)
+//     {
+//         return title;
+//     }
+
+//     // use a while loop to read repeatly
+//     // while(f->cache_rest == CACHE_SIZE && (sz - title) >= CACHE_SIZE)
+//     while((sz - title) >= CACHE_SIZE)
+//     {
+//         // memcpy(title + buff, f->rest, CACHE_SIZE);
+//         // f->rest += CACHE_SIZE;
+//         for(int i=0; i < CACHE_SIZE; i++)
+//         {
+//             if (file_offset > file_size)
+//             {
+//                 return -1;
+//             }
+//             memcpy(buff + title + i, f->rest, 1);
+//             f->rest += 1;
+//             f->cache_rest -= 1;
+//             file_offset += stride;
+//         }
+
+//         if(f->write_stat == 1)
+//         {
+//             io300_flush(f);
+//             f->write_stat = 0;
+//         }
+//         f->file_head += CACHE_SIZE;
+//         f->rest = f->cache;
+//         f->cache_rest = pread(f->fd, f->cache, CACHE_SIZE,f->file_head); 
+//         title += CACHE_SIZE;
+
+//         if(f->cache_rest <= 0)
+//         {
+//             return title;
+//         }
+//     }
+//     //tail
+//     size_t tail = sz - title;
+
+//     if (tail <= f->cache_rest)
+//     {
+//         // memcpy(buff + title, f->rest, tail);
+//         // f->cache_rest -= tail;
+//         // f->rest += tail;
+//         for(int i=0; i < tail; i++)
+//         {
+//             if (file_offset > file_size)
+//             {
+//                 return -1;
+//             }
+//             memcpy(buff + title + i, f->rest, 1);
+//             f->rest += 1;
+//             f->cache_rest -= 1;
+//             file_offset += stride;
+//         }
+
+//         return title + tail;
+//     }
+//     else
+//     {
+//         memcpy(buff + title, f->rest, f->cache_rest);
+//         size_t temp = f->cache_rest;
+//         // f->rest += temp;
+//         f->cache_rest = 0;
+
+//         for(int i=0; i < temp; i++)
+//         {
+//             if (file_offset > file_size)
+//             {
+//                 return -1;
+//             }
+//             memcpy(buff + title + i, f->rest, 1);
+//             f->rest += 1;
+//             // f->cache_rest -= 1;
+//             file_offset += stride;
+//         }
+
+//         return title + temp; 
+//     }
+
+//     }
+// }
+
 ssize_t io300_write(struct io300_file *const f, const char *buff, size_t const sz) {
     check_invariants(f);
     // TODO: Implement this

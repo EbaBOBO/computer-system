@@ -21,3 +21,7 @@ Everything is a file means a great range of input/output resources are simple st
 
 ## How long did it take to complete Caching I/O?
 15 hours
+
+## Extra Credit
+Detecting strides, that is, access patterns that jump by fixed amounts within a file: e.g., reading byte 1, then byte 1001, then byte 2001, and prefetching appropriately.(uncomment line 410-546 and comment line )
+Everytime when we use memcpy, use a for loop to replace it. This loop will excute n times which is the size that need to copy to the array. So that we can realize the function of read with strides.
