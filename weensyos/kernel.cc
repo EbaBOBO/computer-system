@@ -52,6 +52,7 @@ void memshow();
 //    string is an optional string passed from the boot loader.
 
 static void process_setup(pid_t pid, const char* program_name);
+void copy_mappings(x86_64_pagetable* dst, x86_64_pagetable* src);
 
 void kernel(const char* command) {
     // Initialize hardware.
@@ -66,13 +67,21 @@ void kernel(const char* command) {
     console_clear();
 
     // (re-)Initialize the kernel page table.
-    for (vmiter it(kernel_pagetable); it.va() < MEMSIZE_PHYSICAL; it += PAGESIZE) {
-        if (it.va() != 0) {
-            it.map(it.va(), PTE_P | PTE_W | PTE_U);
+
+    for (vmiter it(kernel_pagetable); it.va() < MEMSIZE_PHYSICAL ; it += PAGESIZE) {
+        if(it.va() != 0) { 
+        if (it.va() == CONSOLE_ADDR || it.va() >= PROC_START_ADDR) 
+        {
+            it.map(it.va(),  PTE_P | PTE_W | PTE_U);
+        }           
+        else if (it.va() < PROC_START_ADDR) 
+        {
+            it.map(it.va(), PTE_P | PTE_W);      
         } else {
             // nullptr is inaccessible even to the kernel
             it.map(it.va(), 0);
         }
+    }
     }
 
     // Set up process descriptors.
@@ -88,6 +97,10 @@ void kernel(const char* command) {
         process_setup(3, "allocator3");
         process_setup(4, "allocator4");
     }
+    // // extern x86_64_pagetable kernel_pagetable[];
+    // extern x86_64_pagetable kernel_pagetable_copy[];
+    // x86_64_pagetable* pt = kernel_pagetable;
+    // copy_mappings(kernel_pagetable_copy, kernel_pagetable);
 
     // Switch to the first process using run().
     run(&ptable[1]);
@@ -154,7 +167,26 @@ void process_setup(pid_t pid, const char* program_name) {
 
     // Initialize this process's page table. Notice how we are currently
     // sharing the kernel's page table.
-    ptable[pid].pagetable = kernel_pagetable;
+   // ptable[pid].pagetable = kernel_pagetable;
+    x86_64_pagetable* proc_pagetable = (x86_64_pagetable*) kalloc(PAGESIZE);
+    ptable[pid].pagetable = proc_pagetable;
+    memset((void*) proc_pagetable, 0, PAGESIZE);
+    vmiter it(kernel_pagetable, 0);
+    vmiter it2(proc_pagetable, 0);
+    for (; it.va() < PROC_START_ADDR; it += PAGESIZE) 
+    {
+        // if (!it.present()) {
+        //     // log_printf("%p maps to %p\n", it.va(), it.pa());
+        //     log_printf("VA %p maps to PA %p with PERMS %p, %p, %p\n", it.va(), it.pa(), 0, 0, 0);
+        // }
+        // else{
+        //     log_printf("VA %p maps to PA %p with PERMS %p, %p, %p\n", it.va(), it.pa(), 1, 2, 4);
+        // }
+        it2.map(it.pa(), it.perm());
+        it2 += PAGESIZE;
+        // it2.map(it2.va(),  PTE_P | PTE_W | PTE_U);
+    }
+    
 
     // Initialize `program_loader`.
     // The `program_loader` is an iterator that visits segments of executables.
@@ -164,37 +196,96 @@ void process_setup(pid_t pid, const char* program_name) {
     // (recall that an executable has code/text segment, data segment, etc).
 
     // First, for each segment of the program, we allocate page(s) of memory.
+    /////////////////////////////////////////
+    // for (loader.reset(); loader.present(); ++loader) {
+    //     for (uintptr_t a = round_down(loader.va(), PAGESIZE);
+    //          a < loader.va() + loader.size();
+    //          a += PAGESIZE) {
+    //         // `a` is the virtual address of the current segment's page.
+    //         assert(!pages[a / PAGESIZE].used());
+    //         // Read the description on the `pages` array if you're confused about what it is.
+    //         // Here, we're directly getting the page that has the same physical address as the
+    //         // virtual address `a`, and claiming that page by incrementing its reference count
+    //         // (you will have to change this later).
+    //         pages[a / PAGESIZE].refcount = 1;
+    //         if ( loader.writable())
+    //         {
+    //             vmiter(ptable[pid].pagetable, a).map(a,  PTE_PWU);
+    //             // it2.map(it2.va(),  PTE_P | PTE_W | PTE_U);
+    //         }
+    //         else
+    //         {
+    //             vmiter(ptable[pid].pagetable, a).map(a,  PTE_P | PTE_U);
+    //         }
+    /////////////////////////////////////////
+
     for (loader.reset(); loader.present(); ++loader) {
         for (uintptr_t a = round_down(loader.va(), PAGESIZE);
              a < loader.va() + loader.size();
              a += PAGESIZE) {
             // `a` is the virtual address of the current segment's page.
-            assert(!pages[a / PAGESIZE].used());
+           // assert(!pages[a / PAGESIZE].used());
             // Read the description on the `pages` array if you're confused about what it is.
             // Here, we're directly getting the page that has the same physical address as the
             // virtual address `a`, and claiming that page by incrementing its reference count
             // (you will have to change this later).
-            pages[a / PAGESIZE].refcount = 1;
+            // pages[(void*) kalloc(PAGESIZE) / PAGESIZE].refcount = 1;
+
+            // pages[(void*) kalloc(PAGESIZE) / PAGESIZE].refcount = 1;
+
+            void* b = kalloc(PAGESIZE);
+
+            if ( loader.writable())
+            {
+                vmiter(ptable[pid].pagetable, a).map(b,  PTE_PWU);
+                // it2.map(loader.va(),  PTE_P | PTE_W | PTE_U);
+                // it2.map(it2.va(),  PTE_P | PTE_W | PTE_U);
+            }
+            else
+            {
+                vmiter(ptable[pid].pagetable, a).map(b,  PTE_P | PTE_U);
+            }
+
+            // if ( loader.writable())
+            // {
+            //     vmiter(ptable[pid].pagetable, (uintptr_t) kalloc(PAGESIZE)).map(kalloc(PAGESIZE),  PTE_PWU);
+            //     // it2.map(it2.va(),  PTE_P | PTE_W | PTE_U);
+            // }
+            // else
+            // {
+            //     vmiter(ptable[pid].pagetable, (uintptr_t) kalloc(PAGESIZE)).map(kalloc(PAGESIZE),  PTE_P | PTE_U);
+            // }
+            
+
         }
     }
 
-    // We now copy instructions and data into memory that we just allocated.
+    //We now copy instructions and data into memory that we just allocated.
     for (loader.reset(); loader.present(); ++loader) {
-        memset((void*) loader.va(), 0, loader.size());
-        memcpy((void*) loader.va(), loader.data(), loader.data_size());
+        // memset((void*) loader.va(), 0, loader.size());
+        // memcpy((void*) loader.va(), loader.data(), loader.data_size());
+        memset((void*) vmiter(proc_pagetable,loader.va()).pa(), 0, loader.size());
+        memcpy((void*) vmiter(proc_pagetable,loader.va()).pa(), loader.data(), loader.data_size());
     }
+    // for (loader.reset(); loader.present(); ++loader) {
+    //     memset((void*) kalloc(PAGESIZE), 0, loader.size());
+    //     memcpy((void*) kalloc(PAGESIZE), loader.data(), loader.data_size());
+    // }
 
     // Set %rip and mark the entry point of the code.
     ptable[pid].regs.reg_rip = loader.entry();
 
     // We also need to allocate a page for the stack.
-    uintptr_t stack_addr = PROC_START_ADDR + PROC_SIZE * pid - PAGESIZE;
-    assert(!pages[stack_addr / PAGESIZE].used());
+    // uintptr_t stack_addr = PROC_START_ADDR + PROC_SIZE * pid - PAGESIZE;
+    uintptr_t stack_addr = MEMSIZE_VIRTUAL - PAGESIZE;
+    //assert(!pages[stack_addr / PAGESIZE].used());
     // Again, we're using the physical page that has the same address as the `stack_addr` to
     // maintain the one-to-one mapping between physical and virtual memory (you will have to change
     // this later).
-    pages[stack_addr / PAGESIZE].refcount = 1;
+    // pages[stack_addr / PAGESIZE].refcount = 1;
     // Set %rsp to the start of the stack.
+    void* stack_pa = kalloc(PAGESIZE);
+    vmiter(ptable[pid].pagetable, stack_addr).map( stack_pa,  PTE_PWU);
     ptable[pid].regs.reg_rsp = stack_addr + PAGESIZE;
 
     // Finally, mark the process as runnable.
@@ -348,11 +439,30 @@ uintptr_t syscall(regstate* regs) {
 //    have to change this).
 
 int syscall_page_alloc(uintptr_t addr) {
-    assert(!pages[addr / PAGESIZE].used());
+    // assert(!pages[addr / PAGESIZE].used());
     // Currently we're simply using the physical page that has the same address
     // as `addr` (which is a virtual address).
-    pages[addr / PAGESIZE].refcount = 1;
-    memset((void*) addr, 0, PAGESIZE);
+    // pages[addr / PAGESIZE].refcount = 1;
+    
+    if (addr % PAGESIZE != 0 || addr < PROC_START_ADDR || addr >= MEMSIZE_VIRTUAL)
+    {
+        return -1;
+    }
+    void* addr_pa = kalloc(PAGESIZE);
+    if(addr_pa == nullptr) {
+        return -1;
+    }
+    if(vmiter(current, addr).try_map((uintptr_t)addr_pa, PTE_P | PTE_W | PTE_U) < 0)
+    {
+        kfree(addr_pa);
+        return -1;
+    }
+    // if( vmiter())
+    
+    // vmiter(current, addr).map(addr_pa, PTE_PWU);
+    memset((void*) vmiter(current, addr).pa(), 0, PAGESIZE);
+    
+   
     return 0;
 }
 
@@ -448,3 +558,32 @@ void memshow() {
     extern void console_memviewer(proc* vmp);
     console_memviewer(p);
 }
+
+// void copy_mappings(x86_64_pagetable* dst, x86_64_pagetable* src) {
+//     // Copy all virtual memory mappings from `src` into `dst`
+//     // for addresses in the range [0, MEMSIZE_VIRTUAL).
+//     // You may assume that `dst` starts out empty (has no mappings).
+//     vmiter it(src, 0);
+//     vmiter it2(dst, 0);
+//     for (; it.va() < MEMSIZE_VIRTUAL; it += PAGESIZE) {
+//         if (!it.present()) {
+//             // log_printf("%p maps to %p\n", it.va(), it.pa());
+//             log_printf("VA %p maps to PA %p with PERMS %p, %p, %p\n", it.va(), it.pa(), 0, 0, 0);
+//         }
+//         else{
+//             log_printf("VA %p maps to PA %p with PERMS %p, %p, %p\n", it.va(), it.pa(), 1, 2, 4);
+//         }
+//         it2.map(it.pa(), it.perm());
+//     }
+//     // For our grading purposes, use the following line to print out
+//     // the physical and virtual addresses you're mapping, as well as the 
+//     // present, writable, and user-accessible permission bits (in that order): 
+    
+//     //
+//     // Make sure to use the exact same format string above, but fill
+//     // out the rest of the line.
+
+//     // After this function completes, for any virtual address `va` with
+//     // 0 <= va < MEMSIZE_VIRTUAL, `dst` and `src` should map that va
+//     // to the same physical address with the same permissions.
+// }

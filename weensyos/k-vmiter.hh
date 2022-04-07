@@ -13,6 +13,8 @@ class vmiter {
   public:
     // initialize a `vmiter` for `pt` pointing at `va`
     inline vmiter(x86_64_pagetable* pt, uintptr_t va = 0);
+    // inline vmiter(x86_64_pagetable* pt, uintptr_t va = PROC_START_ADDR);
+    
     inline vmiter(const proc* p, uintptr_t va = 0);
 
     inline uintptr_t va() const;      // current virtual address
