@@ -14,10 +14,12 @@ Multiple page tables need to be traversed, and memory needs to be accessed multi
 2.How does a new page table get prepared for a new process? Talk both about processes born from fork() and those not born from fork().
 First we initialize the ptable and then assign a pagetable to the process. Then we mapping data before the process start address with kernel's data and permission.
 The process that used the fork() system call is the parent process. In other words, a parent process is one that creates a child process. A parent process may have multiple child processes but a child process only one parent process.On the success of a fork() system call, the PID of the child process is returned to the parent process and 0 is returned to the child process. On the failure of a fork() system call, -1 is returned to the parent process and a child process is not created.
-3.During the normal execution of the process, how does the process refer to its memory? Go through an example of translating a virtual memory address to an actual physical memory address.
-The process was first allocated a physical address ad then mapping a virtual address. 
-4.Upon exiting, what kind of resources have to be cleaned up and freed?
 
+3.During the normal execution of the process, how does the process refer to its memory? Go through an example of translating a virtual memory address to an actual physical memory address.
+To map virtual memory addresses to physical memory addresses, page tables are used. To make memory translations more efficient, we use page tables to group chunks of memory addresses in one mapping. We use vmiter to iterate and mapping in sequence. 
+
+4.Upon exiting, what kind of resources have to be cleaned up and freed?
+The reference count need to be cleaned up. Current states need to be set to free. Pagetables need to be free. 
 ## Extra Credit attempted:
 
 ## How long did it take to complete WeensyOS?
