@@ -568,17 +568,25 @@ pid_t syscall_fork()
 // syscall_exit()
 //    Handles the SYSCALL_EXIT system call. This function
 //    implements the specification for `sys_exit` in `u-lib.hh`.
+
+// void kill_all()
+// {
+//     for (pid_t pid = 1; pid < NPROC; pid++) 
+//     {
+//         if(ptable[pid].pagetable != nullptr)
+//         {
+//             help_free(ptable[pid].pagetable);
+//             current->state = P_FREE;
+//         }
+//     }
+// }
+
 void syscall_exit() 
 {
     // Implement for Step 7!
-    // for (pid_t pid = 1; pid < NPROC; pid++) 
-    // {
-    //     if(ptable[pid].pagetable != nullptr)
-    //     {
-    //         help_free(ptable[pid].pagetable);
-    //     }
-        
-    // }
+
+
+
     help_free(current->pagetable);
     current->state = P_FREE;
     // panic("Unexpected system call %ld!\n", SYSCALL_EXIT);

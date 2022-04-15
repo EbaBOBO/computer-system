@@ -6,7 +6,7 @@ Project 4 - WeensyOS
 ## Design Overview:
 None
 ## Collaborators:
-
+Yiran Zhou, Wandong Yan
 ## Conceptual Questions:
 1. What is the disadvantage of having an identity mapping between virtual and physical memory? What is the purpose of mapping virtual memory addresses to different physical addresses?
 Multiple page tables need to be traversed, and memory needs to be accessed multiple times to achieve high complexity. The purpose of mapping virtual memory addresses to different physical addresses is it can save memory and page tables can be allocated on demand.
@@ -21,7 +21,9 @@ To map virtual memory addresses to physical memory addresses, page tables are us
 4.Upon exiting, what kind of resources have to be cleaned up and freed?
 The reference count need to be cleaned up. Current states need to be set to free. Pagetables need to be free. 
 ## Extra Credit attempted:
-
+Implement a kill system call that lets one process kill others!
+To kill all process, we can go through every page table, then free and clean up then (line 572 - 582).
 ## How long did it take to complete WeensyOS?
 
 <!-- Enter an approximate number of hours that you spent actively working on the project. -->
+20 hours
