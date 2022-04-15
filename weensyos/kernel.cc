@@ -106,6 +106,23 @@ void kernel(const char* command) {
     run(&ptable[1]);
 }
 
+void help_free(x86_64_pagetable* pagetable)
+{
+    // memory that accessible with privileged mappings
+    for(vmiter it(pagetable,0); it.va() < MEMSIZE_VIRTUAL; it += PAGESIZE)
+    {
+        if(it.va() != CONSOLE_ADDR && it.user())
+        {
+            kfree(it.kptr());
+        }
+    }
+    //pagetable page
+    for(ptiter it(pagetable); it.va() < MEMSIZE_VIRTUAL; it.next())
+    {
+        kfree(it.kptr());
+    }
+    kfree(pagetable);
+}
 
 // kalloc(sz)
 //    Kernel memory allocator. Allocates `sz` contiguous bytes and
@@ -130,10 +147,9 @@ void* kalloc(size_t sz) {
     if (sz > PAGESIZE) {
         return nullptr;
     }
-
-    while (next_alloc_pa < MEMSIZE_PHYSICAL) {
-        uintptr_t pa = next_alloc_pa;
-        next_alloc_pa += PAGESIZE;
+    uintptr_t pa = 0;
+    while (  pa < MEMSIZE_PHYSICAL) {
+        
 
         if (allocatable_physical_address(pa)
             && !pages[pa / PAGESIZE].used()) {
@@ -141,6 +157,7 @@ void* kalloc(size_t sz) {
             memset((void*) pa, 0xCC, PAGESIZE);
             return (void*) pa;
         }
+        pa += PAGESIZE;
     }
     return nullptr;
 }
@@ -152,8 +169,28 @@ void* kalloc(size_t sz) {
 
 void kfree(void* kptr) {
     // Placeholder code below - you will have to implement `kfree`!
-    (void) kptr;
-    assert(false);
+    // (void) kptr;
+    // assert(false);
+    // if(kptr)
+    // {
+    //     while (kptr > 0) {
+    //         uintptr_t pa =(uintptr_t) kptr;
+    //         kptr -= 1;
+
+    //         if (allocatable_physical_address(pa)
+    //             && pages[pa / PAGESIZE].used()) {
+    //             pages[pa / PAGESIZE].refcount = 0;
+    //             memset((void*) pa, 0, PAGESIZE);
+    //             // return (void*) pa;
+    //         }
+    //     }
+    
+    //}
+    if(kptr && pages[(uintptr_t) kptr/PAGESIZE].refcount != 0)
+    {
+        pages[(uintptr_t) kptr/PAGESIZE].refcount -= 1;
+    }
+
 }
 
 
@@ -196,28 +233,6 @@ void process_setup(pid_t pid, const char* program_name) {
     // (recall that an executable has code/text segment, data segment, etc).
 
     // First, for each segment of the program, we allocate page(s) of memory.
-    /////////////////////////////////////////
-    // for (loader.reset(); loader.present(); ++loader) {
-    //     for (uintptr_t a = round_down(loader.va(), PAGESIZE);
-    //          a < loader.va() + loader.size();
-    //          a += PAGESIZE) {
-    //         // `a` is the virtual address of the current segment's page.
-    //         assert(!pages[a / PAGESIZE].used());
-    //         // Read the description on the `pages` array if you're confused about what it is.
-    //         // Here, we're directly getting the page that has the same physical address as the
-    //         // virtual address `a`, and claiming that page by incrementing its reference count
-    //         // (you will have to change this later).
-    //         pages[a / PAGESIZE].refcount = 1;
-    //         if ( loader.writable())
-    //         {
-    //             vmiter(ptable[pid].pagetable, a).map(a,  PTE_PWU);
-    //             // it2.map(it2.va(),  PTE_P | PTE_W | PTE_U);
-    //         }
-    //         else
-    //         {
-    //             vmiter(ptable[pid].pagetable, a).map(a,  PTE_P | PTE_U);
-    //         }
-    /////////////////////////////////////////
 
     for (loader.reset(); loader.present(); ++loader) {
         for (uintptr_t a = round_down(loader.va(), PAGESIZE);
@@ -246,31 +261,14 @@ void process_setup(pid_t pid, const char* program_name) {
                 vmiter(ptable[pid].pagetable, a).map(b,  PTE_P | PTE_U);
             }
 
-            // if ( loader.writable())
-            // {
-            //     vmiter(ptable[pid].pagetable, (uintptr_t) kalloc(PAGESIZE)).map(kalloc(PAGESIZE),  PTE_PWU);
-            //     // it2.map(it2.va(),  PTE_P | PTE_W | PTE_U);
-            // }
-            // else
-            // {
-            //     vmiter(ptable[pid].pagetable, (uintptr_t) kalloc(PAGESIZE)).map(kalloc(PAGESIZE),  PTE_P | PTE_U);
-            // }
-            
-
         }
     }
 
     //We now copy instructions and data into memory that we just allocated.
     for (loader.reset(); loader.present(); ++loader) {
-        // memset((void*) loader.va(), 0, loader.size());
-        // memcpy((void*) loader.va(), loader.data(), loader.data_size());
         memset((void*) vmiter(proc_pagetable,loader.va()).pa(), 0, loader.size());
         memcpy((void*) vmiter(proc_pagetable,loader.va()).pa(), loader.data(), loader.data_size());
     }
-    // for (loader.reset(); loader.present(); ++loader) {
-    //     memset((void*) kalloc(PAGESIZE), 0, loader.size());
-    //     memcpy((void*) kalloc(PAGESIZE), loader.data(), loader.data_size());
-    // }
 
     // Set %rip and mark the entry point of the code.
     ptable[pid].regs.reg_rip = loader.entry();
@@ -290,6 +288,7 @@ void process_setup(pid_t pid, const char* program_name) {
 
     // Finally, mark the process as runnable.
     ptable[pid].state = P_RUNNABLE;
+    // kfree(stack_pa);
 }
 
 
@@ -461,25 +460,129 @@ int syscall_page_alloc(uintptr_t addr) {
     
     // vmiter(current, addr).map(addr_pa, PTE_PWU);
     memset((void*) vmiter(current, addr).pa(), 0, PAGESIZE);
-    
+    // help_free((x86_64_pagetable*) addr_pa);
    
     return 0;
 }
 
+
+
 // syscall_fork()
 //    Handles the SYSCALL_FORK system call. This function
 //    implements the specification for `sys_fork` in `u-lib.hh`.
-pid_t syscall_fork() {
+pid_t syscall_fork() 
+{
     // Implement for Step 5!
-    panic("Unexpected system call %ld!\n", SYSCALL_FORK);
+    // panic("Unexpected system call %ld!\n", SYSCALL_FORK);
+
+    //find empty ptable
+
+    for (pid_t pid = 1; pid < NPROC; pid++) 
+    {
+        if (ptable[pid].state == P_FREE) 
+        {
+            init_process(&ptable[pid], 0);
+
+            // Initialize this process's page table
+            x86_64_pagetable* proc_pagetable = (x86_64_pagetable*) kalloc(PAGESIZE);
+            ptable[pid].pagetable = proc_pagetable;
+            memset((void*) proc_pagetable, 0, PAGESIZE);
+            if (ptable[pid].pagetable == nullptr) 
+            {
+                return -1;
+            }
+            //creat parent and child vmiter
+            vmiter parent(current->pagetable, 0);
+            vmiter child(ptable[pid].pagetable, 0);
+            //mapping from current->pagetable to child 
+            for (;parent.va() < MEMSIZE_VIRTUAL ; parent += PAGESIZE, child += PAGESIZE) 
+            {
+                if ( parent.va() >= PROC_START_ADDR)
+                {
+                    //perm with read and write
+                    if (parent.user() && parent.writable())
+                    {
+                        void* b = kalloc(PAGESIZE);
+                        //if b is null, return -1
+                        if(!b)
+                        {
+                            help_free(ptable[pid].pagetable);
+                            ptable[pid].state = P_FREE;
+                            return -1;
+                        }
+                        //if try map fails, return -1
+                        if(child.try_map(b, parent.perm()) < 0)
+                        {
+                            help_free(ptable[pid].pagetable);
+                            kfree(b);
+                            ptable[pid].state = P_FREE;
+                            return -1;                                
+                        }
+                        //copy data from parent to child
+                        memcpy(b, parent.kptr(), PAGESIZE);
+                    }
+                    //read only, increment the reference counts of the pages being shared between processes
+                    if (parent.user() && !parent.writable())
+                    {
+                        //if try map fails, return -1
+                        if(child.try_map(parent.pa(), parent.perm()) < 0)
+                        {
+                            help_free(ptable[pid].pagetable);
+                            ptable[pid].state = P_FREE;
+                            return -1;                                
+                        }
+                        //increment reference count
+                        pages[parent.pa()/ PAGESIZE].refcount += 1;
+                    }
+                }
+                else
+                {
+                    //if try map fails, return -1
+                    if(child.try_map(parent.pa(), parent.perm()) < 0)
+                    {
+                        help_free(ptable[pid].pagetable);
+                        ptable[pid].state = P_FREE;
+                        return -1;                                
+                    } 
+                }
+
+                
+
+            }
+            //first copy parent process registers then return 0 to the register
+            current->regs.reg_rax = pid;
+            ptable[pid].regs = current->regs;
+            ptable[pid].regs.reg_rax = 0;
+            ptable[pid].state = P_RUNNABLE;
+            return pid;
+
+
+
+        }
+
+    
+    }
+    return -1;
 }
 
 // syscall_exit()
 //    Handles the SYSCALL_EXIT system call. This function
 //    implements the specification for `sys_exit` in `u-lib.hh`.
-void syscall_exit() {
+void syscall_exit() 
+{
     // Implement for Step 7!
-    panic("Unexpected system call %ld!\n", SYSCALL_EXIT);
+    // for (pid_t pid = 1; pid < NPROC; pid++) 
+    // {
+    //     if(ptable[pid].pagetable != nullptr)
+    //     {
+    //         help_free(ptable[pid].pagetable);
+    //     }
+        
+    // }
+    help_free(current->pagetable);
+    current->state = P_FREE;
+    // panic("Unexpected system call %ld!\n", SYSCALL_EXIT);
+
 }
 
 // schedule
@@ -559,31 +662,4 @@ void memshow() {
     console_memviewer(p);
 }
 
-// void copy_mappings(x86_64_pagetable* dst, x86_64_pagetable* src) {
-//     // Copy all virtual memory mappings from `src` into `dst`
-//     // for addresses in the range [0, MEMSIZE_VIRTUAL).
-//     // You may assume that `dst` starts out empty (has no mappings).
-//     vmiter it(src, 0);
-//     vmiter it2(dst, 0);
-//     for (; it.va() < MEMSIZE_VIRTUAL; it += PAGESIZE) {
-//         if (!it.present()) {
-//             // log_printf("%p maps to %p\n", it.va(), it.pa());
-//             log_printf("VA %p maps to PA %p with PERMS %p, %p, %p\n", it.va(), it.pa(), 0, 0, 0);
-//         }
-//         else{
-//             log_printf("VA %p maps to PA %p with PERMS %p, %p, %p\n", it.va(), it.pa(), 1, 2, 4);
-//         }
-//         it2.map(it.pa(), it.perm());
-//     }
-//     // For our grading purposes, use the following line to print out
-//     // the physical and virtual addresses you're mapping, as well as the 
-//     // present, writable, and user-accessible permission bits (in that order): 
-    
-//     //
-//     // Make sure to use the exact same format string above, but fill
-//     // out the rest of the line.
 
-//     // After this function completes, for any virtual address `va` with
-//     // 0 <= va < MEMSIZE_VIRTUAL, `dst` and `src` should map that va
-//     // to the same physical address with the same permissions.
-// }
