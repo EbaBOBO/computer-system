@@ -16,6 +16,7 @@ int Server::get_account(uint64_t id, account_t** account) {
   accounts[id]->mtx.lock();
   account = &accounts[id];
   accounts[id]->mtx.unlock();
+  accounts_mtx.unlock();
 
   return 0;
   // return -ECLINOTFOUND;
@@ -46,6 +47,7 @@ int Server::get_two_accounts(uint64_t first_id, account_t** first_account,
   accounts[second_id]->mtx.lock();
   second_account = &accounts[second_id];
   accounts[second_id]->mtx.unlock();
+  accounts_mtx.unlock();
 
   return 0;
 
