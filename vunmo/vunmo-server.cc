@@ -7,8 +7,18 @@
 
 int Server::get_account(uint64_t id, account_t** account) {
   // TODO: implement
+  accounts_mtx.lock();
+  if(accounts.find(id) == accounts.end())
+  {
+    accounts_mtx.unlock();
+    return -ECLINOTFOUND;
+  }
+  accounts[id]->mtx.lock();
+  account = &accounts[id];
+  accounts[id]->mtx.unlock();
 
-  return -ECLINOTFOUND;
+  return 0;
+  // return -ECLINOTFOUND;
 }
 
 int Server::get_two_accounts(uint64_t first_id, account_t** first_account,
@@ -22,7 +32,24 @@ int Server::get_two_accounts(uint64_t first_id, account_t** first_account,
   // happen?). Come up with a way to lock these clients so that you can always
   // avoid deadlocks!
 
-  return -ECLINOTFOUND;
+  accounts_mtx.lock();
+  if(accounts.find(first_id) == accounts.end()||accounts.find(second_id) == accounts.end())
+  {
+    accounts_mtx.unlock();
+    return -ECLINOTFOUND;
+  }
+
+  accounts[first_id]->mtx.lock();
+  first_account = &accounts[first_id];
+  accounts[first_id]->mtx.unlock();
+
+  accounts[second_id]->mtx.lock();
+  second_account = &accounts[second_id];
+  accounts[second_id]->mtx.unlock();
+
+  return 0;
+
+  // return -ECLINOTFOUND;
 }
 
 int Server::process_request(request_t* req) {
@@ -43,7 +70,40 @@ int Server::process_request(request_t* req) {
   //      - Error check the return value of `get_account` or `get_two_accounts`,
   //        whichever you called above. If there is error, call
   //        `handle_missing_clients` and return the error value.
-
+  int is_get;
+  switch (req->type) 
+  {
+    case BALANCE:
+      is_get = get_account(req->origin_client_id, &first_account);
+      break;
+    case DEPOSIT:
+      is_get = get_account(req->origin_client_id, &first_account);
+      break;
+    case WITHDRAWAL:
+      is_get = get_account(req->origin_client_id, &first_account);
+      // printf("[WITHDRAWAL] Client %ld $%ld\n", req->origin_client_id,
+      //        req->amount);
+      break;
+    case PAYMENT:
+      is_get = get_two_accounts(req->origin_client_id, &first_account,
+                  req->target_client_id, &second_account);
+      // printf("[PAYMENT] Client %ld $%ld to target %ld\n", req->origin_client_id,
+      //        req->amount, req->target_client_id);
+      break;
+    case CHARGE:
+      is_get = get_two_accounts(req->origin_client_id, &first_account,
+                  req->target_client_id,  &second_account);
+      // printf("[CHARGE] Client %ld $%ld to target %ld\n", req->origin_client_id,
+      //        req->amount, req->target_client_id);
+      break;
+  }
+  accounts_mtx.lock();
+  if(is_get != 0)
+  {
+    handle_missing_clients(is_get, req);
+    accounts_mtx.unlock();
+    return is_get;
+  }
   // 2. Call appropriate request handler.
   //      - Depending on the type of request, call `handle_balance`,
   //        `handle_deposit`, `handle_withdraw`, `handle_pay`, or
@@ -53,14 +113,48 @@ int Server::process_request(request_t* req) {
   //      - These handlers will fill appropriate messages in the response_t (and
   //        notification_t) you pass in, so you don't have to worry about that
   //        detail :)
+  int handle_error; 
+  switch (req->type) 
+  {
+    case BALANCE:
+      handle_error = handle_balance(req, first_account, &resp);
+      break;
+    case DEPOSIT:
+      handle_error = handle_deposit(req, first_account, &resp);
+      break;
+    case WITHDRAWAL:
+      handle_error = handle_withdraw(req, first_account, &resp);
+      break;
+    case PAYMENT:
+      handle_error = handle_pay(req, first_account,
+               second_account,&resp,
+               &target_notification);
+      break;
+    case CHARGE:
+      handle_error = handle_pay(req, first_account,
+                      second_account,&resp,
+                      &target_notification);
+      break;
+    default:
+      handle_error = handle_unknown_request(req, &resp);
+      // break;
+
+  }
+  if(handle_error != 0)
+  {
+    accounts_mtx.unlock();
+    return handle_error;
+  }
+  
 
   // 3. Send the response_t to client who issued the request by calling
   // `send_response`.
-
+  send_response(req->origin_client_id, &resp);
   // 4. If necessary, send the notification_t to target client by calling
   // `send_notification`.
-
+  send_notification(req->origin_client_id, &target_notification);
   // 5. Unlock client account(s).
+  accounts_mtx.unlock();
 
   return 0;
 }
@@ -72,6 +166,15 @@ void Server::receive_requests_loop() {
   // While the server is still running (i.e., `is_stopped` is still false), keep
   // calling `fetch_requests` in a loop to fetch requests from clients. Add them
   // to the server's work queue.
+  while(!this->is_stopped.load())
+  {
+    std::vector<request_t*> requests = fetch_requests();
+    for ( int i = 0; i < (int)requests.size(); i++)
+    {
+      work_queue.push(requests[i]);
+    }
+    
+  }
 }
 
 void Server::work_loop() {
@@ -83,6 +186,24 @@ void Server::work_loop() {
   //        stopped), simply return.
   //      - Free the request struct with the `delete` keyword since the struct
   //        was heap allocated.
+  while(!is_stopped.load())
+  {
+    request_t* elt;
+    bool p = work_queue.pop(&elt);
+    if(p)
+    {
+      return;
+    }
+    else
+    {
+      process_request(elt);
+      // delete &elt;
+      delete[] elt;
+    }
+    // request_t* req = work_queue.pop();
+    
+
+  }
 }
 
 void Server::accept_clients_loop() {
@@ -99,34 +220,87 @@ void Server::accept_clients_loop() {
   //    insert the client_conn_t into `client_conns` map.
   // 3. Create a new account_t for the client. Initialize the ID and balance,
   //    and insert it into `accounts` map.
+  while(!this->is_stopped.load())
+  {
+    client_conn_t* new_client = accept_client();
+    if(!new_client){
+      continue;
+    }
+    client_conns_mtx.lock();
+    new_client->mtx.lock();
+    if(client_conns.count(new_client->id) > 0)
+    {
+      handle_reconnecting_client(new_client,client_conns.at(new_client->id));
+      client_conns_mtx.unlock();
+      new_client->mtx.unlock();
+      continue;
+    }
+    //Set the `is_connected` field of the the client_conn_t to true
+    //insert the client_conn_t into `client_conns` map.
+    // new_client->mtx.lock();
+    new_client->is_connected = true;
+    client_conns.insert(std::make_pair(new_client->id, new_client));
+    client_conns_mtx.unlock();
+    // new_client->mtx.unlock();
+    //Create a new account_t for the client.
+    account_t* new_account = new account_t;
+    new_account->mtx.lock();
+    new_account->id = new_client->id;
+    new_client->mtx.unlock();
+
+    new_account->balance = 0;
+    new_account->mtx.unlock();
+
+    accounts_mtx.lock();
+    accounts.insert(std::make_pair(new_account->id, new_account));
+    // new_account->mtx.unlock();
+    accounts_mtx.unlock();
+  }
+  
 }
 
 int Server::start(int port, int n_workers) {
   // TODO: implement
   // 1. Set the server's `is_stopped` field to false.
-
+  this->is_stopped.store(false);
   // 2. Call `open_listen_socket` to open a listener socket. Make sure the
   //    socket descriptor returned is not -1, and store it in the server's
   //    `listener_fd` field.
-
+  int socket = open_listen_socket(port);
+  if( socket != -1)
+  {
+    this->listener_fd = socket;
+  }
   // 3. Make sure that n_workers is greater than 0, and store n_workers in the
   //    server's `num_workers`, and set its `workers` vector to be a vector of
   //    that size.
   //    You can call vector's resize function, or create a new vector of that
   //    size to do this.
+  if(n_workers > 0)
+  {
+    this->num_workers = n_workers;
+    this->workers.resize(this->num_workers);
+  }
 
   // 4. Create a pool of workers by spawning `num_workers` number of threads,
   //    each running the `work_loop` function. Store the worker threads in the
   //    `workers` vector. These threads will be joined in `stop()`.
-
+  // std::thread t[num_workers];
+  for(int i = 0; i < num_workers; i++)
+  {
+    // t[i] = std::thread(&Server::work_loop, this);
+    // this->workers[i] = t[i];
+    this->workers[i] = std::thread(&Server::work_loop, this);
+  }
   // 5. Create a thread that runs `receive_requests_loop` to keep reading
   //    requests from clients.
   //    Store this thread in the server's `request_listener` field. This thread
   //    will be joined in `stop()`.
-
+  this->request_listener = std::thread(&Server::receive_requests_loop, this);
   // 6. Create a thread that runs `accept_clients_loop` to keep accepting client
   //    connections.
   //    Store this thread in the server's `client_listener` field.
+  this->client_listener = std::thread(&Server::accept_clients_loop, this);
 
   return 0;
 }
@@ -134,19 +308,34 @@ int Server::start(int port, int n_workers) {
 std::unordered_map<uint64_t, uint64_t> Server::stop() {
   // TODO: implement
   // 1. Set the server's `is_stopped` field to true.
-
+  this->is_stopped.store(true);
   // 2. Stop the server from accepting further connections. To do so, call the
   //    `shutdown` system call on the server's `listener_fd` socket descriptor;
   //    and pass `SHUT_RDWR` as the second argument, which shuts the socket down
   //    for reading and writing.
   //    Join the `request_listener` thread.
-
+  shutdown(this->listener_fd, SHUT_RDWR);
+  this->request_listener.join();
+ 
   // 3. Stop the work queue. Flush the content of the queue, and free each
   //    request struct (which was heap-allocated when it was created) with the
   //    `delete` keyword.
+  this->work_queue.stop();
+  std::vector<request_t*> trash = this->work_queue.flush();
+  for ( int i = 0; i < (int)trash.size(); i++)
+  {
+    delete trash[i];
+  }
+  // delete &work_queue;
 
   // 4. Join all workers threads, and join the client listener thread.
 
+  
+  for(int i = 0; i < this->num_workers; i++)
+  {
+    this->workers[i].join();
+  }
+  this->client_listener.join();
   /* NOTE: At this point, server is now in a single-threaded state */
 
   // Close and delete all client connections.

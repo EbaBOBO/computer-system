@@ -105,18 +105,56 @@ std::size_t synchronized_queue<T>::size() {
 template <typename T>
 bool synchronized_queue<T>::pop(T* elt) {
   // TODO: implement
+  // std::size_t s;
+  // elt->mtx.lock();
+  std::unique_lock<std::mutex> guard(this->mtx);
+  
+  // while(synchronized_queue::size() == 0)
+  if(this->is_stopped.load())
+  {
+    return true;
+  }
+  while(this->q.empty())
+  {
+    this->cv.wait(guard);
+  }
+  *elt = this->q.front();
+  this->q.pop();
+  // elt->mtx.unlock();
   return false;
 }
 
 template <typename T>
 void synchronized_queue<T>::push(T elt) {
   // TODO: implement
+  std::unique_lock<std::mutex> guard(this->mtx);
+  // mtx.lock();
+  if(q.empty())
+  {
+    q.push(elt);
+    this->cv.notify_all();
+  }
+  else
+  {
+    this->q.push(elt);
+  }
+  
+  // mtx.unlock();
+
 }
 
 template <typename T>
 std::vector<T> synchronized_queue<T>::flush() {
   std::vector<T> elts;
   // TODO: implement
+  std::unique_lock<std::mutex> guard(this->mtx);
+  // this->mtx.lock();
+  while(!this->q.empty())
+  {
+    elts.push_back(this->q.front());
+    this->q.pop();
+  }
+  // this->mtx.unlock();
   return elts;
 }
 
@@ -125,6 +163,10 @@ void synchronized_queue<T>::stop() {
   // set is_stopped to true, and wake up all threads waiting on the cond
   // variable
   // TODO: implement
+  std::unique_lock<std::mutex> guard(this->mtx);
+  // this->mtx.lock();
+  this->is_stopped.store(true);
+  // this->mtx.unlock();
 }
 
 #endif
