@@ -285,13 +285,13 @@ void Server::accept_clients_loop() {
       continue;
     }
     client_conns_mtx.lock();
-    new_client->mtx.lock();
+    // new_client->mtx.lock();
     
     
     if(client_conns.count(new_client->id) > 0)
     {
       handle_reconnecting_client(new_client,client_conns.at(new_client->id));
-      new_client->mtx.unlock();
+      // new_client->mtx.unlock();
       client_conns_mtx.unlock();
       continue;
     }
@@ -304,12 +304,12 @@ void Server::accept_clients_loop() {
     // new_client->mtx.unlock();
     //Create a new account_t for the client.
     account_t* new_account = new account_t;
-    new_account->mtx.lock();
+    // new_account->mtx.lock();
     new_account->id = new_client->id;
-    new_client->mtx.unlock();
+    // new_client->mtx.unlock();
 
     new_account->balance = 0;
-    new_account->mtx.unlock();
+    // new_account->mtx.unlock();
 
     accounts_mtx.lock();
     accounts.insert(std::make_pair(new_account->id, new_account));
