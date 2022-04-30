@@ -150,7 +150,7 @@ int Server::process_request(request_t* req) {
                &target_notification);
       break;
     case CHARGE:
-      handle_error = handle_pay(req, first_account,
+      handle_error = handle_charge(req, first_account,
                       second_account,&resp,
                       &target_notification);
       break;
@@ -173,6 +173,7 @@ int Server::process_request(request_t* req) {
     send_response(req->origin_client_id, &resp);
     if(second_account)
     {
+      // send_notification(req->origin_client_id, &target_notification);
       second_account->mtx.unlock();
     }
     
@@ -185,6 +186,7 @@ int Server::process_request(request_t* req) {
   {
     if(second_account)
     {
+      send_notification(req->target_client_id, &target_notification);
       second_account->mtx.unlock();
     }
     
@@ -194,7 +196,13 @@ int Server::process_request(request_t* req) {
   }
   if(req->type == PAYMENT ||req->type == CHARGE)
   {
-    send_notification(req->origin_client_id, &target_notification);
+    send_notification(req->target_client_id, &target_notification);
+    // if (notif != 0)
+    // {
+    //   first_account->mtx.unlock();
+    //   second_account->mtx.unlock();
+    //   return notif;
+    // }
     first_account->mtx.unlock();
     second_account->mtx.unlock();
   }
