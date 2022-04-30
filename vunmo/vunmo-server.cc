@@ -14,8 +14,8 @@ int Server::get_account(uint64_t id, account_t** account) {
     return -ECLINOTFOUND;
   }
   accounts[id]->mtx.lock();
-  account = &accounts[id];
-  accounts[id]->mtx.unlock();
+  *account = accounts.at(id);
+  // accounts[id]->mtx.unlock();
   accounts_mtx.unlock();
 
   return 0;
@@ -34,19 +34,36 @@ int Server::get_two_accounts(uint64_t first_id, account_t** first_account,
   // avoid deadlocks!
 
   accounts_mtx.lock();
-  if(accounts.find(first_id) == accounts.end()||accounts.find(second_id) == accounts.end())
+  if(accounts.find(first_id) == accounts.end())
   {
     accounts_mtx.unlock();
     return -ECLINOTFOUND;
   }
-
+  if(accounts.find(second_id) == accounts.end())
+  {
+    accounts_mtx.unlock();
+    return -ETARNOTFOUND;
+  }
+  if(first_id == second_id)
+  {
+    accounts_mtx.unlock();
+    return -ESELFACTION;
+  }
+if(first_id > second_id)
+{
   accounts[first_id]->mtx.lock();
-  first_account = &accounts[first_id];
-  accounts[first_id]->mtx.unlock();
-
   accounts[second_id]->mtx.lock();
-  second_account = &accounts[second_id];
-  accounts[second_id]->mtx.unlock();
+  *first_account = accounts.at(first_id);
+  *second_account = accounts.at(second_id);
+}
+else
+{
+  accounts[second_id]->mtx.lock();
+  accounts[first_id]->mtx.lock();
+  *second_account = accounts.at(second_id);
+  *first_account = accounts.at(first_id);
+  
+}
   accounts_mtx.unlock();
 
   return 0;
@@ -73,6 +90,7 @@ int Server::process_request(request_t* req) {
   //        whichever you called above. If there is error, call
   //        `handle_missing_clients` and return the error value.
   int is_get;
+  // accounts_mtx.lock();
   switch (req->type) 
   {
     case BALANCE:
@@ -99,11 +117,11 @@ int Server::process_request(request_t* req) {
       //        req->amount, req->target_client_id);
       break;
   }
-  accounts_mtx.lock();
+  
   if(is_get != 0)
   {
     handle_missing_clients(is_get, req);
-    accounts_mtx.unlock();
+    // accounts_mtx.unlock();
     return is_get;
   }
   // 2. Call appropriate request handler.
@@ -142,11 +160,7 @@ int Server::process_request(request_t* req) {
       // break;
 
   }
-  if(handle_error != 0)
-  {
-    accounts_mtx.unlock();
-    return handle_error;
-  }
+
   
 
   // 3. Send the response_t to client who issued the request by calling
@@ -154,9 +168,25 @@ int Server::process_request(request_t* req) {
   send_response(req->origin_client_id, &resp);
   // 4. If necessary, send the notification_t to target client by calling
   // `send_notification`.
-  send_notification(req->origin_client_id, &target_notification);
+  if(handle_error != 0)
+  {
+    // accounts_mtx.unlock();
+    return handle_error;
+  }
+  if(req->type == PAYMENT ||req->type == CHARGE)
+  {
+    send_notification(req->origin_client_id, &target_notification);
+    first_account->mtx.unlock();
+    second_account->mtx.unlock();
+  }
+  else
+  {
+    first_account->mtx.unlock();
+  }
+  
   // 5. Unlock client account(s).
-  accounts_mtx.unlock();
+
+  // accounts_mtx.unlock();
 
   return 0;
 }
@@ -202,7 +232,6 @@ void Server::work_loop() {
       // delete &elt;
       delete[] elt;
     }
-    // request_t* req = work_queue.pop();
     
 
   }
@@ -233,8 +262,8 @@ void Server::accept_clients_loop() {
     if(client_conns.count(new_client->id) > 0)
     {
       handle_reconnecting_client(new_client,client_conns.at(new_client->id));
-      client_conns_mtx.unlock();
       new_client->mtx.unlock();
+      client_conns_mtx.unlock();
       continue;
     }
     //Set the `is_connected` field of the the client_conn_t to true
