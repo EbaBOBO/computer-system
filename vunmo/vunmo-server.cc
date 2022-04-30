@@ -49,22 +49,21 @@ int Server::get_two_accounts(uint64_t first_id, account_t** first_account,
     accounts_mtx.unlock();
     return -ESELFACTION;
   }
+  *first_account = accounts.at(first_id);
+  *second_account = accounts.at(second_id);
+  accounts_mtx.unlock();
 if(first_id > second_id)
 {
   accounts[first_id]->mtx.lock();
   accounts[second_id]->mtx.lock();
-  *first_account = accounts.at(first_id);
-  *second_account = accounts.at(second_id);
+
 }
 else
 {
   accounts[second_id]->mtx.lock();
   accounts[first_id]->mtx.lock();
-  *second_account = accounts.at(second_id);
-  *first_account = accounts.at(first_id);
-  
 }
-  accounts_mtx.unlock();
+  
 
   return 0;
 
@@ -165,13 +164,33 @@ int Server::process_request(request_t* req) {
 
   // 3. Send the response_t to client who issued the request by calling
   // `send_response`.
-  send_response(req->origin_client_id, &resp);
+  
   // 4. If necessary, send the notification_t to target client by calling
   // `send_notification`.
   if(handle_error != 0)
   {
     // accounts_mtx.unlock();
+    send_response(req->origin_client_id, &resp);
+    if(second_account)
+    {
+      second_account->mtx.unlock();
+    }
+    
+    first_account->mtx.unlock();
+    
     return handle_error;
+  }
+  int rq = send_response(req->origin_client_id, &resp);
+  if (rq != 0)
+  {
+    if(second_account)
+    {
+      second_account->mtx.unlock();
+    }
+    
+    first_account->mtx.unlock();
+    
+    return rq;
   }
   if(req->type == PAYMENT ||req->type == CHARGE)
   {
@@ -220,7 +239,7 @@ void Server::work_loop() {
   //        was heap allocated.
   while(!is_stopped.load())
   {
-    request_t* elt;
+    request_t *elt;
     bool p = work_queue.pop(&elt);
     if(p)
     {
@@ -230,7 +249,7 @@ void Server::work_loop() {
     {
       process_request(elt);
       // delete &elt;
-      delete[] elt;
+      delete elt;
     }
     
 

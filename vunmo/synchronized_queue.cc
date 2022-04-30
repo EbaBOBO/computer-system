@@ -110,13 +110,14 @@ bool synchronized_queue<T>::pop(T* elt) {
   std::unique_lock<std::mutex> guard(this->mtx);
   
   // while(synchronized_queue::size() == 0)
-  if(this->is_stopped.load())
-  {
-    return true;
-  }
-  while(this->q.empty())
+
+  while(!this->is_stopped && this->q.empty())
   {
     this->cv.wait(guard);
+  }
+  if(this->is_stopped)
+  {
+    return true;
   }
   *elt = this->q.front();
   this->q.pop();
@@ -131,13 +132,12 @@ void synchronized_queue<T>::push(T elt) {
   // mtx.lock();
   if(q.empty())
   {
-    q.push(elt);
+    // q.push(elt);
     this->cv.notify_all();
   }
-  else
-  {
+
     this->q.push(elt);
-  }
+
   
   // mtx.unlock();
 
@@ -163,9 +163,10 @@ void synchronized_queue<T>::stop() {
   // set is_stopped to true, and wake up all threads waiting on the cond
   // variable
   // TODO: implement
-  std::unique_lock<std::mutex> guard(this->mtx);
+  // std::unique_lock<std::mutex> guard(this->mtx);
   // this->mtx.lock();
   this->is_stopped.store(true);
+  cv.notify_all();
   // this->mtx.unlock();
 }
 
