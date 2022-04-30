@@ -6,7 +6,8 @@ WANT_TSAN = 1
 -include sanitizers.mk
 
 EXECS = client server
-SRCS = ssl_hash.cc vunmo-server.cc vunmo-client.cc synchronized_queue.cc network_helpers.cc
+# SRCS = ssl_hash.cc vunmo-server.cc vunmo-client.cc synchronized_queue.cc network_helpers.cc cs300-openssl-hash-lib/ssl_hash.cc
+SRCS = vunmo-server.cc vunmo-client.cc synchronized_queue.cc network_helpers.cc cs300-openssl-hash-lib/ssl_hash.cc
 
 TEST_DIR = tests
 QUEUE_TESTS = $(patsubst %.cc,%,$(sort $(wildcard $(TEST_DIR)/queue/*.cc)))

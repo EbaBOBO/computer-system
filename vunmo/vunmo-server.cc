@@ -286,6 +286,8 @@ void Server::accept_clients_loop() {
     }
     client_conns_mtx.lock();
     new_client->mtx.lock();
+    
+    
     if(client_conns.count(new_client->id) > 0)
     {
       handle_reconnecting_client(new_client,client_conns.at(new_client->id));
@@ -527,6 +529,7 @@ client_conn_t* Server::accept_client() {
 
     // TODO: SRC material!
     std::string client_pwd(hello.client_pwd);
+    std::string hash_str(client_pwd, client_pwd.size());
 
     auto pwd = this->pwds.find(hello.client_id);
     if (pwd == this->pwds.end()) {
