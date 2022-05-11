@@ -6,6 +6,12 @@
 #include <grpcpp/grpcpp.h>
 #include "../build/shardmaster.grpc.pb.h"
 
+  struct server_shard{
+    std::vector<shard_t> shard_v;
+    std::string name;
+    int number;
+  };
+
 class StaticShardmaster : public Shardmaster::Service {
   using Empty = google::protobuf::Empty;
 
@@ -28,6 +34,11 @@ class StaticShardmaster : public Shardmaster::Service {
   // Hint: think about what sort of data structures make sense for keeping track
   // of which servers have which shards, as well as what kind of locking you
   // will need to ensure thread safety.
+
+  std::vector<server_shard> mapp;
+
+  // std::map<std::string, std::vector<int> > mapp;
+  std::mutex mtx;
 };
 
 #endif  // SHARDING_SHARDMASTER_H

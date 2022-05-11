@@ -29,6 +29,8 @@ class SimpleShardkvServer : public Shardkv::Service {
  private:
   // TODO: add any fields you need here (ie. a map from key to value, any
   // mutexes you want, etc.)
+  std::map<std::string,std::string>  hashmap;
+  std::mutex mtx;
 };
 
 #endif  // SHARDING_SIMPLESHARDKV_H
