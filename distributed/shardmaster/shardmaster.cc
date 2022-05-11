@@ -50,16 +50,41 @@
       }
     }
     //none empty, none exist, join
-    int interval = int(100/(count+1));
+    int num_servers = count + 1;
+    int interval = int(100/num_servers);
     int start = 0;
     int end = start + interval; 
     //change old server's shard
+    int MAX_KEY = 100;
+    int MIN_KEY = 0;
+    int num_bigger = (MAX_KEY - MIN_KEY + 1) - int((MAX_KEY - MIN_KEY + 1) / num_servers) * num_servers; 
+    int step = int((MAX_KEY - MIN_KEY + 1) / num_servers);
+
     for (int i = 0; i < count - 1; i++)
     {
-      mapp[i].shard_v[0].lower = start;
-      mapp[i].shard_v[0].upper = end;
-      start = end + 1;
-      end = start + interval;
+      if(i < num_bigger)
+      {
+        mapp[i].shard_v.clear();
+        shard_t temp_shard;
+        temp_shard.lower = start;
+        temp_shard.upper = end;
+        mapp[i].shard_v.push_back(temp_shard);
+        start = end + 1;
+        end = start + step;
+        // mapp[i].shard_v[0].lower = start;
+        // mapp[i].shard_v[0].upper = end;
+      }
+      else
+      {
+        mapp[i].shard_v.clear();
+        shard_t temp_shard;
+        temp_shard.lower = start;
+        temp_shard.upper = end;
+        mapp[i].shard_v.push_back(temp_shard);
+        start = end + 1;
+        end = start + step - 1;
+      }
+
     }
     //join a new server
     shard_t temp_shard;
@@ -217,6 +242,7 @@
         mapp[i].shard_v[j].upper = start - 1;
       }
     }
+    sortAscendingInterval(mapp[i].shard_v);
     if(mapp[i].name == des)
     {
       mapp[i].shard_v.push_back(bb);
@@ -278,6 +304,7 @@
       s->set_lower(mapp[i].shard_v[j].lower);
       s->set_upper(mapp[i].shard_v[j].upper);
     }
+    
   }
   mtx.unlock();
   return ::grpc::Status::OK;
