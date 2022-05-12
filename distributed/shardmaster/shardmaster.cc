@@ -317,6 +317,7 @@
                                         ::QueryResponse* response) {
   int num_v = mapp.size();
   mtx.lock();
+  int find = 0;
   for(int i = 0; i < num_v; i ++)
   {
     ConfigEntry* entry = response->add_config();

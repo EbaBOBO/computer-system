@@ -59,8 +59,12 @@ class ShardkvServer : public Shardkv::Service {
   // address we're running on (hostname:port)
   const std::string address;
   // TODO add any fields you want here!
+
+  std::map<std::string, std::string> mapp;
+  std::map<std::string, std::vector<shard>> server_map ;
+  std::mutex mtx;
   // std::vector<server_shard> server;
-  // std::mutex mtx;
+  
 };
 
 #endif  // SHARDING_SHARDKV_H
