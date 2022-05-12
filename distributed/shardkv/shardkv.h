@@ -8,6 +8,12 @@
 #include "../build/shardkv.grpc.pb.h"
 #include "../build/shardmaster.grpc.pb.h"
 
+// struct server_shard{
+//   std::vector<shard_t> shard_v;
+//   std::string name;
+//   int number;
+// };
+
 class ShardkvServer : public Shardkv::Service {
   using Empty = google::protobuf::Empty;
 
@@ -53,6 +59,8 @@ class ShardkvServer : public Shardkv::Service {
   // address we're running on (hostname:port)
   const std::string address;
   // TODO add any fields you want here!
+  // std::vector<server_shard> server;
+  // std::mutex mtx;
 };
 
 #endif  // SHARDING_SHARDKV_H

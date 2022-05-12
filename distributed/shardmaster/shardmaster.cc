@@ -25,8 +25,8 @@
   if (count == 0)
   {
     shard_t temp_shard;
-    temp_shard.lower = 0;
-    temp_shard.upper = 100;
+    temp_shard.lower = MIN_KEY;
+    temp_shard.upper = MAX_KEY;
 
     server_shard server;
     server.name = request->server();
@@ -50,53 +50,46 @@
       }
     }
     //none empty, none exist, join
-    int num_servers = count + 1;
-    int interval = int(100/num_servers);
-    int start = 0;
-    int end = start + interval; 
-    //change old server's shard
-    int MAX_KEY = 100;
-    int MIN_KEY = 0;
-    int num_bigger = (MAX_KEY - MIN_KEY + 1) - int((MAX_KEY - MIN_KEY + 1) / num_servers) * num_servers; 
-    int step = int((MAX_KEY - MIN_KEY + 1) / num_servers);
-
-    for (int i = 0; i < count - 1; i++)
-    {
-      if(i < num_bigger)
-      {
-        mapp[i].shard_v.clear();
-        shard_t temp_shard;
-        temp_shard.lower = start;
-        temp_shard.upper = end;
-        mapp[i].shard_v.push_back(temp_shard);
-        start = end + 1;
-        end = start + step;
-        // mapp[i].shard_v[0].lower = start;
-        // mapp[i].shard_v[0].upper = end;
-      }
-      else
-      {
-        mapp[i].shard_v.clear();
-        shard_t temp_shard;
-        temp_shard.lower = start;
-        temp_shard.upper = end;
-        mapp[i].shard_v.push_back(temp_shard);
-        start = end + 1;
-        end = start + step - 1;
-      }
-
-    }
     //join a new server
     shard_t temp_shard;
-    temp_shard.lower = start;
-    temp_shard.upper = 100;
-
+    temp_shard.lower = MIN_KEY;
+    temp_shard.upper = MAX_KEY;
     server_shard server;
     server.name = request->server();
     server.number = 1;
     server.shard_v.push_back(temp_shard);
-
     mapp.push_back(server);
+
+    int num_servers = count + 1;
+    // printf("%d\n", num_servers);
+    //change old server's shard
+    int num_bigger = (MAX_KEY - MIN_KEY + 1) - int((MAX_KEY - MIN_KEY + 1) / num_servers) * num_servers; 
+    int step = int((MAX_KEY - MIN_KEY + 1) / num_servers);
+    int start = 0;
+    int end = -1; 
+    for (int i = 0; i < num_servers; i++)
+    {
+      if(i < num_bigger)
+      {
+        mapp[i].shard_v.clear();
+        start = end + 1;
+        end = start + step;
+        shard_t temp_shard;
+        temp_shard.lower = start;
+        temp_shard.upper = end;
+        mapp[i].shard_v.push_back(temp_shard);
+      }
+      else
+      {
+        mapp[i].shard_v.clear();
+        start = end + 1;
+        end = start + step - 1;
+        shard_t temp_shard;
+        temp_shard.lower = start;
+        temp_shard.upper = end;
+        mapp[i].shard_v.push_back(temp_shard);
+      }
+    }
     mtx.unlock();
     return ::grpc::Status::OK;
   }
@@ -166,20 +159,38 @@
     //none empty
     else
     {
-      int interval = int(100/(count));
-      int start = 0;
-      int end = start + interval; 
-      //change old server's shard
-      for (int i = 0; i < count; i++)
+    int num_servers = count;
+    //change old server's shard
+    int num_bigger = (MAX_KEY - MIN_KEY + 1) - int((MAX_KEY - MIN_KEY + 1) / num_servers) * num_servers; 
+    int step = int((MAX_KEY - MIN_KEY + 1) / num_servers);
+    int start = 0;
+    int end = -1; 
+    for (int i = 0; i < num_servers; i++)
+    {
+      if(i < num_bigger)
       {
-        mapp[i].shard_v[0].lower = start;
-        mapp[i].shard_v[0].upper = end;
+        mapp[i].shard_v.clear();
         start = end + 1;
-        end = start + interval;
+        end = start + step;
+        shard_t temp_shard;
+        temp_shard.lower = start;
+        temp_shard.upper = end;
+        mapp[i].shard_v.push_back(temp_shard);
       }
-      mapp.back().shard_v[0].upper = 100;
-      mtx.unlock();
-      return ::grpc::Status::OK;
+      else
+      {
+        mapp[i].shard_v.clear();
+        start = end + 1;
+        end = start + step - 1;
+        shard_t temp_shard;
+        temp_shard.lower = start;
+        temp_shard.upper = end;
+        mapp[i].shard_v.push_back(temp_shard);
+      }
+    }
+    mtx.unlock();
+    return ::grpc::Status::OK;
+
     }
 
   }
@@ -214,6 +225,19 @@
   shard_t bb;
   bb.upper = request->shard().upper();
   bb.lower = request->shard().lower();
+  int find = 0;
+  for(int i = 0; i < num_v; i++)
+  {
+    if(mapp[i].name == des)
+    {
+      find = 1;
+    }
+  }
+  if(find == 0)
+  {
+    mtx.unlock();
+    return ::grpc::Status(::grpc::StatusCode::INVALID_ARGUMENT, "<error: master_move target don't exist>"); 
+  }
   for(int i = 0; i < num_v; i++)
   {
     int shard_size = mapp[i].shard_v.size();
@@ -222,7 +246,9 @@
       
       if(get_overlap(mapp[i].shard_v[j],bb) == OverlapStatus::COMPLETELY_CONTAINED)
       {
-        mapp.erase(mapp.begin() + i);
+        // printf("erase name:%s, i is:%d, j is:%d, %d %d\n", mapp[i].name,i, j, mapp[i].shard_v[j].lower,mapp[i].shard_v[j].upper );
+        // mapp.erase(mapp.begin() + i);
+        mapp[i].shard_v.erase(mapp[i].shard_v.begin() + j);
         // mapp[i].shard_v.erase(shard_v.begin() + j);
       }
       if(get_overlap(mapp[i].shard_v[j],bb) == OverlapStatus::COMPLETELY_CONTAINS)
@@ -241,6 +267,7 @@
       {
         mapp[i].shard_v[j].upper = start - 1;
       }
+    // printf("name:%s, i is:%d, j is:%d, %d %d\n", mapp[i].name,i, j, mapp[i].shard_v[j].lower,mapp[i].shard_v[j].upper );
     }
     sortAscendingInterval(mapp[i].shard_v);
     if(mapp[i].name == des)
@@ -248,6 +275,7 @@
       mapp[i].shard_v.push_back(bb);
     }
   }
+  
   mtx.unlock();
   return ::grpc::Status::OK;
   // return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "not implemented");
