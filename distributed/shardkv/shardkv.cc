@@ -171,7 +171,7 @@
   else
   {
     //check post's user_id is in the range
-    int post_user_id = extractID(request->user());
+    
     //exist, replace
     if(mapp.find(request->key()) != mapp.end())
     {
@@ -184,14 +184,19 @@
       //insert post_id
       mapp.insert(std::pair<std::string, std::string>(request->key(), request->data()));
       //insert user_id_posts
-      if(mapp.find("user_" + std::to_string(post_user_id) + "_posts") == mapp.end())
+      if(!request->user().empty())
       {
-        mapp.insert(std::pair<std::string, std::string>("user_" + std::to_string(post_user_id) + "_posts",request->key() + ","));
+        int post_user_id = extractID(request->user());
+        if(mapp.find("user_" + std::to_string(post_user_id) + "_posts") == mapp.end())
+        {
+          mapp.insert(std::pair<std::string, std::string>("user_" + std::to_string(post_user_id) + "_posts",request->key() + ","));
+        }
+        else
+        {
+          mapp["user_" + std::to_string(post_user_id) + "_posts"] = mapp["user_" + std::to_string(post_user_id) + "_posts"] + request->key() +",";
+        }
       }
-      else
-      {
-        mapp["user_" + std::to_string(post_user_id) + "_posts"] = mapp["user_" + std::to_string(post_user_id) + "_posts"] + request->key() +",";
-      }
+
     }
 
   }
