@@ -62,7 +62,10 @@ class ShardkvServer : public Shardkv::Service {
 
   std::map<std::string, std::string> mapp;
   std::map<std::string, std::vector<shard>> server_map ;
+  std::vector<shard> shard_v; 
   std::mutex mtx;
+  bool check_range(std::vector<shard> shard_c, int id);
+  std::string find_server(std::map<std::string, std::vector<shard>> server_map, int id);
   // std::vector<server_shard> server;
   
 };

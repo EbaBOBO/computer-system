@@ -20,6 +20,7 @@
                                   ::GetResponse* response) {
   //if get all_users
   // mtx.lock();
+  std::unique_lock<std::mutex> guard(this->mtx);
   std::cout<<"get "<<request->key()<<std::endl;
   if(request->key().rfind("all") != std::string::npos)
   {
@@ -42,23 +43,14 @@
   }
   //check id range, not in the range, return error
   int id = extractID(request->key());
-  int find = 0;
-  // for(auto &range:server_map)
-  // {
-  //   if(id <= range.second.upper && id >= range.second.lower)
-  //   {
-  //     find = 1;
-  //   }
-  // }
-  // if(find == 0)
-  // {
-  //   mtx.unlock();
-  //   return ::grpc::Status(::grpc::StatusCode::INVALID_ARGUMENT, "<error: shardkv get not in the range>");
-  // }
+  if(!check_range(shard_v, id))
+  {
+    return ::grpc::Status(::grpc::StatusCode::INVALID_ARGUMENT, "<error: shardkv get not in the range>");
+  }
+  
   //in the range
   std::vector<std::string> key_parse = parse_value(request->key(), "_");
   std::string put_name = key_parse[0];
-  // int id = extractID(request->key());
   //if user_id_posts
   if(key_parse.size() == 3)
   {
@@ -116,7 +108,6 @@
       }
     }
   }
-  // mtx.unlock();
   return ::grpc::Status::OK;
   // return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "not implemented");
 }
@@ -138,23 +129,15 @@
 ::grpc::Status ShardkvServer::Put(::grpc::ServerContext* context,
                                   const ::PutRequest* request,
                                   Empty* response) {
-  // mtx.lock();
+  std::unique_lock<std::mutex> guard(this->mtx);
   std::cout<<"put "<<request->key()<<" "<<request->user()<<std::endl;
   //check id range, not in the range, return error
   int id = extractID(request->key());
-  int find = 0;
-  // for(auto &range:server_map)
-  // {
-  //   if(id <= range.second.upper && id >= range.second.lower)
-  //   {
-  //     find = 1;
-  //   }
-  // }
-  // if(find == 0)
-  // {
-  //   mtx.unlock();
-  //   return ::grpc::Status(::grpc::StatusCode::INVALID_ARGUMENT,  "<error: shardkv put not in the range>");
-  // }
+  if(!check_range(shard_v, id))
+  {
+    return ::grpc::Status(::grpc::StatusCode::INVALID_ARGUMENT,  "<error: shardkv put not in the range>");
+  }
+
   //in the range
   std::vector<std::string> key_name = parse_value(request->key(), "_");
   std::string put_name = key_name[0];
@@ -189,22 +172,7 @@
   {
     //check post's user_id is in the range
     int post_user_id = extractID(request->user());
-    int find = 0;
-    // for(auto &range:server_map)
-    // {
-    //   if(post_user_id <= range.second.upper && post_user_id >= range.second.lower)
-    //   {
-    //     find = 1;
-    //   }
-    // }
-    // if(find == 0)
-    // {
-    //   mtx.unlock();
-    //   return ::grpc::Status(::grpc::StatusCode::INVALID_ARGUMENT,  "<error: shardkv put not in the range>");
-    // }
     //exist, replace
-    // std::cout<<request->data()<<request->user()<<std::endl;
-    // std::cout<<post_user_id<<std::endl;
     if(mapp.find(request->key()) != mapp.end())
     {
       // std::cout<<post_user_id<<std::endl;
@@ -214,10 +182,8 @@
     else
     {
       //insert post_id
-      // std::cout<<post_user_id<<std::endl;
       mapp.insert(std::pair<std::string, std::string>(request->key(), request->data()));
       //insert user_id_posts
-      
       if(mapp.find("user_" + std::to_string(post_user_id) + "_posts") == mapp.end())
       {
         mapp.insert(std::pair<std::string, std::string>("user_" + std::to_string(post_user_id) + "_posts",request->key() + ","));
@@ -229,11 +195,7 @@
     }
 
   }
-  // mtx.unlock();
   return ::grpc::Status::OK;
-
-                          
-
   //server is not responsible for the specified key, return error
 
   // return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "not implemented");
@@ -255,20 +217,6 @@
 ::grpc::Status ShardkvServer::Append(::grpc::ServerContext* context,
                                      const ::AppendRequest* request,
                                      Empty* response) {
-  //check id range, not in the range, return error
-  // int id = extractID(request->key());
-  // int find = 0;
-  // for(auto &range:server_map)
-  // {
-  //   if(id <= range.second.upper && id >= range.second.lower)
-  //   {
-  //     find = 1;
-  //   }
-  // }
-  // if(find == 0)
-  // {
-  //   return ::grpc::StatusCode::INVALID_ARGUMENT, "<error: shardkv put not in the range>");
-  // }
   
   return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "not implemented");
 }
@@ -288,6 +236,20 @@
 ::grpc::Status ShardkvServer::Delete(::grpc::ServerContext* context,
                                            const ::DeleteRequest* request,
                                            Empty* response) {
+  std::unique_lock<std::mutex> guard(this->mtx);
+  //check range
+  std::cout<<"delete extract"<<request->key()<<std::endl;
+  if(request->key().rfind("all") != std::string::npos)
+  {
+    mapp.erase("all_users");
+    return ::grpc::Status::OK;
+  }
+  int id = extractID(request->key());
+  if(!check_range(shard_v, id))
+  {
+    return ::grpc::Status(::grpc::StatusCode::INVALID_ARGUMENT,  "<error: shardkv put not in the range>");
+  }
+  //in the range
   std::vector<std::string> key_name = parse_value(request->key(), "_");
   //delete user_id
   if(request->key().rfind("user") != std::string::npos)
@@ -333,7 +295,7 @@
           //contain post_id
           if(it.second.rfind(request->key()) != std::string::npos)
           {
-            std::vector<std::string> new_user_posts_v = parse_value(it.second, "_");
+            std::vector<std::string> new_user_posts_v = parse_value(it.second, ",");
             std::string new_user_posts = "";
             //construct new_user_posts
             for(int i = 0; i < new_user_posts_v .size(); i++)
@@ -343,6 +305,7 @@
                 new_user_posts = new_user_posts + new_user_posts_v[i] + ",";
               }
             }
+            mapp[it.first] = new_user_posts;
           }
         }
       }
@@ -356,7 +319,6 @@
 
   }
   return ::grpc::Status::OK;
-                                  
   
   // return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "not implemented");
 }
@@ -387,9 +349,114 @@ void ShardkvServer::QueryShardmaster(Shardmaster::Stub* stub) {
   auto status = stub->Query(&cc, query, &response);
   if (status.ok()) {
     // TODO: figure out what to do here!
+    std::unique_lock<std::mutex> guard(this->mtx);
+    this->server_map.clear();
+    shard_v.clear();
+    for(auto configure: response.config())
+    {
+      std::vector<shard> temp;
+      for(auto old: configure.shards())
+      {
+        shard_t temp_s;
+        temp_s.lower = old.lower();
+        temp_s.upper = old.upper();
+        temp.push_back(temp_s);
+        if(configure.server() == this->address)
+        {
+          this->shard_v.push_back(temp_s);
+        }
+      }
+      this->server_map.insert({configure.server(), temp});
+    }
+
+    std::vector<std::string> server_rm;
+    for(auto &it: mapp)
+    {
+      std::cout<<"query id "<<it.first<<std::endl;
+      if(it.first == "all_users")
+      {
+        continue;
+      }
+      int id = extractID(it.first);
+      bool in_range = ShardkvServer::check_range(shard_v, id);
+      if(!in_range)
+      {
+        server_rm.push_back(it.first);
+        std::string new_server = find_server(server_map, id);
+      
+        std::chrono::milliseconds timespan(100);
+        auto new_stup = Shardkv::NewStub(grpc::CreateChannel(new_server, grpc::InsecureChannelCredentials()));
+        ::PutRequest putRequest;
+        ::grpc::ClientContext cc2;
+        //post_id find the value in the local
+        std::string user = "";
+        putRequest.set_key(it.first);
+        // std::cout << it.first << std::endl;
+        putRequest.set_data(it.second);
+        putRequest.set_user(user);
+        auto new_status = new_stup->Put(&cc2, putRequest, &query);
+        while (!new_status.ok()) 
+        {
+          ::grpc::ClientContext cc;
+          std::this_thread::sleep_for(timespan);
+          new_status = new_stup->Put(&cc, putRequest, &query);
+        }
+
+      }
+    }
+    for(auto it: server_rm)
+    {
+      mapp.erase(it);
+    }
+      //copy config server
+      // shard_v = configure.shards();
+      // //find shard range in address
+      // if(configure.server() == this->address)
+      // {
+      // //check each k-v in server
+      //   //out of range
+      //     //find correct server
+
+      //     //put it 
+
+      //     //erase current pair
+      // }
+
+
   } else {
     // TODO: here too!
   }
+}
+
+bool ShardkvServer::check_range(std::vector<shard> shard_c, int id)
+{
+  bool res = false;
+  for(auto &it: shard_c)
+  {
+    if( id >= it.lower && id <= it.upper)
+    {
+      res = true;
+    }
+  }
+  return res;
+}
+
+std::string ShardkvServer::find_server(std::map<std::string, std::vector<shard>> server_map, int id) {
+  Empty query;
+  std::string target = "";
+  
+  for (auto it = server_map.begin(); it != server_map.end(); it++) {
+    std::vector<shard>  temp_shard = it->second;
+    //std::cout << item->first << std::endl;
+    for (auto it_s : temp_shard) {
+      if (id <= it_s.upper && id >= it_s.lower) {
+        target = it->first;
+        break;
+      }
+    }
+  }
+
+  return target;
 }
 
 
